@@ -12,10 +12,10 @@ sind per Suche belegt (Quelle + URL + Jahr), aber nicht direkt von der Primärse
 gegengelesen → in QUELLEN.md als TEILVERIFIZIERT geführt. Jede URL ist klickbar und in
 unter einer Minute von Hand prüfbar.
 
-## O2: PWA-Icons
-icon-192.png / icon-512.png / apple-touch-icon.png sind im Manifest referenziert, aber noch
-nicht erzeugt (Platzhalter-SVG liegt bei, sobald UI-Einheit fertig). Ohne PNG-Icons
-funktioniert die App trotzdem; iOS zeigt dann ein Screenshot-Icon. Niedrige Priorität.
+## O2: PWA-Icons — ERLEDIGT
+Erzeugt per `scripts/erzeuge-icons.mjs` (dependency-freier PNG-Generator, Stoppuhr-Motiv):
+public/icon-192.png, icon-512.png, apple-touch-icon.png. Bei Bedarf Motiv im Skript ändern
+und neu ausführen.
 
 ## O3: Versionsstände package.json
 Versionen sind auf Basis des Wissensstands (Anfang 2026) gesetzt und mit ^/~ offen. Falls
