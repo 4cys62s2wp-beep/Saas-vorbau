@@ -30,6 +30,27 @@ sind dann weg → vor dem Entfernen/Neuinstallieren immer JSON-Export.
 Alle Aussagen sind mehrfach suchbestätigt; das direkte Gegenlesen ist die letzte
 Meile für „vor dem Steuerberater wörtlich zitierfähig".
 
+## O6: pdfmake 0.2.23 statt 0.3.x (optionales Upgrade)
+Das Tool nutzt pdfmake 0.2.23 mit dem Legacy-`vfs`-Muster; das funktioniert nachweislich
+(Smoke-Test erzeugt echtes PDF, Umlaute/€ durch eingebettete Roboto abgedeckt — QUELLEN.md
+Thema 10). Aktuell gepflegt ist die 0.3-Linie (0.3.11, API `addFonts`/`addVirtualFileSystem`).
+Upgrade ist optional; falls durchgeführt, ist `exportierePdf()` in `src/lib/pdf.ts` die
+einzige anzupassende Stelle (deckt bereits beide vfs-Exportformen ab).
+
+## O7: Lernkurven-/J-Kurven-Literatur nachrecherchieren
+Für Einlern-/Umstellungsverluste (Wright 1936; Brynjolfsson/Rock/Syverson „Productivity
+J-Curve") konnte keine Primärquelle mit zitierfähigen Prozentwerten verifiziert werden
+(Suchbudget erschöpft). Bis dahin gilt: im Tool und PDF **keine Prozentwerte** aus dieser
+Literatur, keine Zitate. Qualitative Nennung der Umstellungsphase ist zulässig.
+
+## O8: Adversariale Gegenprüfung der Recherche ausgefallen
+Alle 11 geplanten Skeptiker-Durchläufe scheiterten am Monats-Ausgabenlimit des Kontos
+(11 von 22 Agenten erfolgreich). Die Statusangaben in QUELLEN.md sind daher
+Selbsteinschätzung ohne Zweitprüfung — nichts wurde hochgestuft. Ersatz: die Handprüf-Liste
+O5 (~10 Klicks) deckt genau die TEILVERIFIZIERT-Quellen ab. Alternativ die Gegenprüfung
+später erneut starten (Workflow-Skript liegt in der Session, resumeFromRunId nutzt den
+Cache der bereits erfolgreichen Recherchen).
+
 ## O3: Versionsstände package.json
 Versionen sind auf Basis des Wissensstands (Anfang 2026) gesetzt und mit ^/~ offen. Falls
 npm install Peer-Konflikte meldet: zuerst @vitejs/plugin-react gegen die zur installierten

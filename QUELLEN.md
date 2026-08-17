@@ -371,24 +371,107 @@ Daten sind weg.
 
 ## Thema 10: pdfmake — Umlaute/Euro, Font-Einbindung
 
-**RECHERCHE LÄUFT NOCH** — wird nach Abschluss der Verifikationsrunde ergänzt.
-Bereits selbst verifiziert (direkt in node_modules geprüft, Stand pdfmake 0.2.23):
-`pdfmake/build/vfs_fonts.js` exportiert Roboto-TTFs (Regular/Medium/Italic/
-MediumItalic) als eingebettete Dateien; der PDF-Testexport im Test enthält
-ä/ö/ü/ß/€ korrekt kodiert.
+Diese Belege sind ungewöhnlich stark: pdfmake-Doku und -Repo liegen auf GitHub und
+waren damit **direkt lesbar**.
+
+1. **[VERIFIZIERT]** Standardschrift ist **Roboto** (Regular/Medium/Italic/
+   MediumItalic), im Browser über die zweite Datei `vfs_fonts.js` eingebettet.
+   Doku wörtlich: „pdfmake uses the Roboto font by default."
+   - https://github.com/pdfmake/docs/blob/master/content/fonts/custom-fonts-client-side/_index.md (Doku-Stand 2026-05-06)
+2. **[VERIFIZIERT]** Die mitgelieferte Roboto deckt **alle für deutsche Angebote
+   nötigen Zeichen** ab (cmap-Analyse der TTFs im Repo): ä/ö/ü/Ä/Ö/Ü (U+00E4 …),
+   ß (U+00DF), ẞ (U+1E9E), **€ (U+20AC)**, „…" (U+201E/201C), – (U+2013),
+   § (U+00A7), ° (U+00B0). → **Keine Sonderbehandlung, kein Ersatzfont nötig**,
+   solange Strings normale UTF-8-JS-Strings sind und TTFs eingebettet werden.
+   - https://github.com/bpampuch/pdfmake/tree/master/fonts/Roboto
+3. **[VERIFIZIERT]** **Ursache der bekannten Encoding-Probleme:** die
+   **Standard-14-PDF-Fonts** (Helvetica, Times, Courier). Doku wörtlich:
+   *„Attention! This fonts supports only ANSI code page (only english
+   characters)!"* — sie werden nicht eingebettet, Darstellung ist viewerabhängig.
+   → Im Tool nicht verwenden. (Nuance: pdfkit-Quellcode zeigt, dass WinAnsi
+   technisch Umlaute/€ abdeckt; die Doku ist strenger — beide Aussagen genannt.)
+   - https://github.com/pdfmake/docs/blob/master/content/fonts/standard-14-fonts.md
+   - https://github.com/foliojs/pdfkit/blob/master/lib/font/afm.js
+4. **[VERIFIZIERT]** Eigene TTFs: VFS-Weg (`node build-vfs.js "./examples/fonts"`
+   erzeugt `vfs_fonts.js`) oder URL-Protokoll. Pflicht: `pdfmake.min.js` und
+   `vfs_fonts.js` **aus demselben Release** ausliefern.
+5. **[TEILVERIFIZIERT]** Historische UTF-8-Issues (#165, #348, #369, #543) —
+   Titel/Existenz belegt, Inhalte nicht lesbar. Sie betreffen nach Befundlage
+   Font-Abdeckung/Setup, nicht die Textverarbeitung von pdfmake.
+6. **[VERIFIZIERT]** Aktuelle Linie ist **0.3.x** (0.3.11 vom 2026-06-12, API
+   `addFonts`/`addVirtualFileSystem`); die 0.2-Linie (0.2.23) nutzt das
+   Legacy-Muster `pdfMake.vfs = …`. Bundle: ~855 kB Fonts + ~1,4 MB pdfmake.
+7. **[VERIFIZIERT]** Alternative **pdf-lib + @pdf-lib/fontkit** funktioniert
+   offline, ist aber **seit 2021 ohne Release** → nicht erste Wahl.
+
+**Umsetzungsstand im Tool:** verwendet wird **pdfmake 0.2.23** mit eingebetteter
+Roboto (Legacy-`vfs`-Muster; der Code deckt beide vfs-Exportformen ab). Der
+Playwright-Smoke-Test hat einen echten PDF-Download mit `%PDF-`-Signatur aus dem
+laufenden Build erzeugt; die Unit-Tests prüfen ä/ö/ü/ß und € im Dokument.
+Upgrade auf 0.3.x ist in OPEN.md O6 als optionaler Schritt notiert.
 
 ---
 
 ## Thema 11: Herleitung des Konservativ-Abschlags (konservativFaktor)
 
-**RECHERCHE LÄUFT NOCH** — wird nach Abschluss der Verifikationsrunde ergänzt.
-Bis dahin gilt die Auftragsvorgabe (bereits umgesetzt): **kein hartkodierter
-Wert**, Pflicht-Eingabe mit Begründungsfeld, Begründung wird im PDF gedruckt.
+**Kernergebnis (das ehrliche): Es gibt KEINEN normierten Standard-Prozentwert**
+für einen Abschlag auf prognostizierte Prozess-Ersparnisse — weder in der
+Investitionsrechnungs-Lehre, noch in den Methodenhandbüchern der
+Bundesverwaltung, noch bei REFA. **Der Faktor bleibt deshalb Pflicht-Eingabe mit
+Begründung** (so umgesetzt).
+
+**Was sich aber belegen lässt, ist die Berechtigung des Abschlags — drei
+zitierfähige Begründungslinien:**
+
+1. **[VERIFIZIERT] Korrekturverfahren der Investitionsrechnung:** Bei
+   Wirtschaftlichkeitsuntersuchungen unter Unsicherheit werden geschätzte
+   Einzahlungen ausdrücklich um einen **Risikoabschlag** gekürzt.
+   - Organisationshandbuch des Bundes, Kap. 6.5.1 — https://www.orghandbuch.de/Webs/OHB/DE/Organisationshandbuch/6_MethodenTechniken/65_Wirtschaftlichkeitsuntersuchung/651_Quantitative/quantitative_inhalt.html
+   - BMF-Arbeitsanleitung „Wirtschaftlichkeitsuntersuchungen" (VV zu § 7 BHO, 20.12.2013) — https://www.verwaltungsvorschriften-im-internet.de/pdf/BMF-IIA3-20131220-H-06-01-2-KF-002-A001.pdf
+2. **[VERIFIZIERT, wörtlich gelesen] Kaufmännisches Vorsichtsprinzip**,
+   § 252 Abs. 1 Nr. 4 HGB: „Es ist vorsichtig zu bewerten … Gewinne sind nur zu
+   berücksichtigen, wenn sie am Abschlussstichtag realisiert sind." Gilt der
+   Bilanzbewertung, ist als **Rechtsgedanke** aber genau das Argument gegenüber
+   einem Steuerberater. Ergänzend § 7 Abs. 2 BHO (Risiken sind zu berücksichtigen).
+   - https://github.com/bundestag/gesetze/blob/master/h/hgb/index.md
+3. **[VERIFIZIERT] Statistische Herleitung ohne Willkür:** verteilungsfreies
+   Konfidenzintervall des Medians über Ordnungsstatistiken (Vorzeichentest-
+   Inversion). Die **untere Intervallgrenze statt des Punktschätzers** ist die
+   sauberste konservative Variante — ein aus den eigenen Messdaten hergeleiteter
+   Abschlag statt eines gegriffenen Prozentwerts.
+   - AFIT STAT COE, „Confidence Intervals for the Median and Other Percentiles" — https://www.afit.edu/STAT/statcoe_files/Confidence%20Intervals%20for%20the%20Median%20and%20other%20Percentiles.pdf
+
+**Größenordnungs-Analogien [TEILVERIFIZIERT]** (als Hilfetext, NICHT als Default):
+REFA-Verteilzeitzuschläge ca. 5–8 % sachlich + 3–5 % persönlich; Rechnungshof-
+Leitsätze zur Personalbedarfsermittlung orientieren sich an ~10 %. Gesamtkorridor
+pauschaler Zeitkorrekturen also **~8–13 %**.
+- https://refa.de/service/refa-lexikon/verteilzeitzuschlaege
+- Leitsätze für die Personalbedarfsermittlung (Rechnungshöfe Bund/Länder) — https://landesrechnungshof-sh.de/file/20181203_leitsaetze_pbe.pdf
+
+**[NICHT VERIFIZIERT] Einlern-/Umstellungsverluste** (Lernkurve nach Wright,
+Produktivitäts-J-Kurve nach Brynjolfsson/Rock/Syverson): In dieser Session **keine
+Primärquelle mit zitierfähigen Prozentwerten verifiziert** (Suchbudget erschöpft).
+→ Diese Literatur wird im Tool und im PDF **nicht zitiert** und liefert **keine
+Prozentwerte**. Qualitative Nennung („Umstellungsphase mindert die Ersparnis im
+ersten Jahr") ist zulässig, eine Zahl daraus nicht. Nachrecherche: OPEN.md O7.
 
 ---
 
-## Gegenprüfung (adversariale Verifikationsrunde)
+## Gegenprüfung (adversariale Verifikationsrunde) — NICHT DURCHGEFÜHRT
 
-Jedes Thema wird von einem unabhängigen Skeptiker-Agenten geprüft (andere
-Suchanfragen, direktes Nachlesen der GitHub-Zitate, Quellenqualitäts-Check).
-**Status: läuft — Abweichungsvermerke werden hier je Thema nachgetragen.**
+**Ehrlicher Statusbericht:** Geplant war je Thema ein unabhängiger
+Skeptiker-Agent (andere Suchanfragen, Nachlesen der Zitate, Quellenqualitäts-
+Check). **Alle 11 Gegenprüfungen sind fehlgeschlagen** — das Konto hat das
+Monats-Ausgabenlimit erreicht, bevor sie starten konnten (11 von 22 Agenten
+erfolgreich, 11 mit Fehler „monthly spend limit").
+
+**Konsequenz für die Belastbarkeit dieses Dokuments:**
+- Die Statusangaben stammen aus **Selbsteinschätzung der Recherche**, nicht aus
+  unabhängiger Zweitprüfung. Sie wurden **nicht** nachträglich hochgestuft.
+- Wo „direkt-gelesen (GitHub-Fetch)" steht, ist der Beleg unabhängig vom Urteil
+  des Agenten belastbar (Gesetzestexte, MDN, pdfmake-Repo) — dort ist der Verlust
+  der Gegenprüfung am wenigsten kritisch.
+- Bei **TEILVERIFIZIERT** (HWK-PDFs, Destatis, REFA, DIN, Krankenstand) ersetzt
+  die Liste in **OPEN.md O5** die Gegenprüfung: diese Quellen vor dem ersten
+  Kundenangebot einmal von Hand öffnen und die Zahl abgleichen. Das sind
+  ~10 Klicks und schließt die Lücke vollständig.

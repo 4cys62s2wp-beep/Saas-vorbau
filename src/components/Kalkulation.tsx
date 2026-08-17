@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Audit } from '../types'
 import { berechneAudit, vergleicheAudits } from '../lib/kennzahlen'
 import { berechneStundensatz } from '../lib/stundensatz'
+import { KONSERVATIV_BEGRUENDUNGEN } from '../lib/quellen'
 import {
   formatiereEuro,
   formatiereMinuten,
@@ -379,6 +380,29 @@ function AbschlagBereich({
             }
           />
         </label>
+      </div>
+      <div className="mt-3">
+        <span className="text-sm font-semibold uppercase text-slate-500">
+          Belegbare Begründungslogiken (Tap fügt Text ein — QUELLEN.md Thema 11)
+        </span>
+        <div className="mt-1 flex flex-col gap-1">
+          {KONSERVATIV_BEGRUENDUNGEN.map((b) => (
+            <button
+              key={b}
+              type="button"
+              onClick={() =>
+                aktualisiereAudit(audit.id, (a) => ({
+                  ...a,
+                  konservativBegruendung:
+                    a.konservativBegruendung.trim() === '' ? b : `${a.konservativBegruendung} ${b}`,
+                }))
+              }
+              className="rounded-lg border-2 border-slate-300 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+            >
+              + {b}
+            </button>
+          ))}
+        </div>
       </div>
       {audit.konservativFaktor === 1 && (
         <p className="mt-2 font-semibold text-red-700">

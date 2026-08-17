@@ -136,6 +136,15 @@ export const QUELLEN_ANNAHMEN: QuellenEintrag[] = [
     status: 'TEILVERIFIZIERT',
   },
   {
+    thema: 'Konservativ-Abschlag',
+    aussage:
+      'Für die Höhe des Abschlags existiert KEIN normierter Standardwert — er wird deshalb je Audit begründet festgelegt (Begründung siehe oben im Rechenweg). Die Methode selbst ist belegt: Risikoabschlag auf geschätzte Einzahlungen nach dem Korrekturverfahren der Wirtschaftlichkeitsuntersuchung, gestützt auf den Rechtsgedanken des kaufmännischen Vorsichtsprinzips (§ 252 Abs. 1 Nr. 4 HGB)',
+    quelle: 'Organisationshandbuch des Bundes Kap. 6.5.1; BMF-Arbeitsanleitung zu § 7 BHO; § 252 HGB (wörtlich geprüft)',
+    url: 'https://www.orghandbuch.de/Webs/OHB/DE/Organisationshandbuch/6_MethodenTechniken/65_Wirtschaftlichkeitsuntersuchung/651_Quantitative/quantitative_inhalt.html',
+    stand: 'BMF-VV 20.12.2013 / geprüft 08/2026',
+    status: 'VERIFIZIERT',
+  },
+  {
     thema: 'Datensicherheit iPad',
     aussage:
       'IndexedDB ist Best-Effort-Speicher: Home-Screen-Web-Apps sind von der 7-Tage-Löschregel ausgenommen (WebKit 2020), aber Speicherdruck-Eviction und belegte WebKit-Bugs können Daten löschen → regelmäßiger JSON-Export ist Pflicht-Arbeitsschritt',
@@ -144,6 +153,21 @@ export const QUELLEN_ANNAHMEN: QuellenEintrag[] = [
     stand: 'geprüft 08/2026',
     status: 'VERIFIZIERT',
   },
+]
+
+/**
+ * Belegbare Begründungslogiken für den Konservativ-Abschlag (QUELLEN.md Thema 11).
+ * Werden im UI als Textvorschläge angeboten — die konkrete Begründung schreibt
+ * der Nutzer selbst, denn nur er kennt den Betrieb.
+ *
+ * BEWUSST NICHT enthalten: Prozentwerte aus Lernkurven-/J-Kurven-Literatur —
+ * dafür konnte keine Primärquelle verifiziert werden (QUELLEN.md Thema 11).
+ */
+export const KONSERVATIV_BEGRUENDUNGEN: string[] = [
+  'Risikoabschlag nach dem Korrekturverfahren der Wirtschaftlichkeitsuntersuchung: geschätzte Einsparungen werden gekürzt, weil die Messreihe klein ist (n je Schritt unter 30).',
+  'Kaufmännisches Vorsichtsprinzip (Rechtsgedanke § 252 Abs. 1 Nr. 4 HGB): noch nicht realisierte Vorteile werden zurückhaltend angesetzt.',
+  'Umstellungs- und Einlernphase: im ersten Jahr wird die volle Zeitersparnis nicht erreicht (qualitativ angesetzt, ohne Literaturwert).',
+  'Häufigkeit pro Monat beruht auf Angabe des Betriebs bzw. saisonaler Schätzung, nicht auf Messung.',
 ]
 
 export const QUELLEN_PLATZHALTER =
