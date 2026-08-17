@@ -36,6 +36,16 @@ export async function persistentSpeicherAnfordern(): Promise<boolean> {
   }
 }
 
+const LETZTER_EXPORT_KEY = 'prozess-audit:letzter-export'
+
+export async function ladeLetztenExport(): Promise<string | null> {
+  return (await get<string>(LETZTER_EXPORT_KEY)) ?? null
+}
+
+export async function merkeExport(zeitpunktIso: string): Promise<void> {
+  await set(LETZTER_EXPORT_KEY, zeitpunktIso)
+}
+
 export function neueId(): string {
   // crypto.randomUUID gibt es in allen Ziel-Browsern (Safari 15.4+, Chrome 92+)
   return crypto.randomUUID()
