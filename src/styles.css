@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* Große Touch-Targets und hoher Kontrast sind Anforderungen der Erfassungs-Ansicht (iPad).
+   Basis-Regeln hier, Feinheiten per Tailwind-Klassen in den Komponenten. */
+html {
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
