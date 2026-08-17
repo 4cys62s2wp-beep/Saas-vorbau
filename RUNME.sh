@@ -24,6 +24,11 @@ npm run test:run
 echo "== 5/5 Produktions-Build =="
 npm run build
 
+echo "== optional: Browser-Smoke-Test (kompletter Durchlauf inkl. PDF-Download) =="
+echo "   Voraussetzung: npm i -D playwright-core && npx playwright install chromium"
+echo "   Dann in zwei Terminals:  npm run preview   /   node scripts/smoke.mjs"
+echo "   (Läuft nicht automatisch mit, weil er einen laufenden Server und einen Browser braucht.)"
+
 echo
 echo "Dev-Server starten (Mac):        npm run dev"
 echo "Im lokalen Netz fürs iPad:       npm run dev -- --host   (dann http://<Mac-IP>:5173 auf dem iPad öffnen,"
