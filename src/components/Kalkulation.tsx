@@ -145,7 +145,7 @@ function StundensatzBereich({
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-sm text-slate-600">Lohnnebenkosten (%)</span>
-            <input className={feldKlasse} inputMode="decimal" value={lnk} placeholder="siehe QUELLEN.md" onChange={(e) => setLnk(e.target.value)} />
+            <input className={feldKlasse} inputMode="decimal" value={lnk} placeholder="22–28 (QUELLEN.md T2)" onChange={(e) => setLnk(e.target.value)} />
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-sm text-slate-600">Gemeinkosten (%)</span>
@@ -153,7 +153,7 @@ function StundensatzBereich({
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-sm text-slate-600">Produktive h/Jahr</span>
-            <input className={feldKlasse} inputMode="decimal" value={stunden} placeholder="siehe QUELLEN.md" onChange={(e) => setStunden(e.target.value)} />
+            <input className={feldKlasse} inputMode="decimal" value={stunden} placeholder="1455–1503 (QUELLEN.md T3)" onChange={(e) => setStunden(e.target.value)} />
           </label>
         </div>
         {ergebnis && (
