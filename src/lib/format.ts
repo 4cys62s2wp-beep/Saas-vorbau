@@ -2,9 +2,12 @@
  * Zahlen-/Währungs-/Datumsformatierung für UI und PDF.
  * Basis: Intl mit de-DE (Dezimalkomma, Tausenderpunkt). Die DIN-5008-Details
  * (Belege und ggf. Abweichungen) stehen in QUELLEN.md Thema 8 — Kernpunkte:
- * Währungszeichen hinter dem Betrag mit Leerzeichen, Datum JJJJ-MM-TT oder
- * TT.MM.JJJJ, Prozent mit Leerzeichen vor dem Zeichen.
+ * Währungszeichen hinter dem Betrag, geschütztes Leerzeichen zwischen Zahl
+ * und Einheit, Datum JJJJ-MM-TT oder TT.MM.JJJJ, Prozent mit Leerzeichen.
  */
+
+/** Geschütztes Leerzeichen zwischen Zahl und Einheit (kein Zeilenumbruch). */
+export const NBSP = '\u00A0'
 
 const zahlFormat = new Map<number, Intl.NumberFormat>()
 
@@ -21,25 +24,25 @@ export function formatiereZahl(wert: number, dezimalen = 0): string {
 }
 
 export function formatiereEuro(wert: number): string {
-  // Bewusst "1.234,56 €" (Zeichen nachgestellt, geschütztes Leerzeichen) — de-DE-Standard.
-  return `${formatiereZahl(wert, 2)} €`
+  // "1.234,56 €" — Zeichen nachgestellt, geschütztes Leerzeichen (de-DE/DIN 5008).
+  return `${formatiereZahl(wert, 2)}${NBSP}€`
 }
 
 export function formatiereProzent(wert: number, dezimalen = 0): string {
-  return `${formatiereZahl(wert, dezimalen)} %`
+  return `${formatiereZahl(wert, dezimalen)}${NBSP}%`
 }
 
 export function formatiereMinuten(wert: number): string {
-  return `${formatiereZahl(wert, 1)} min`
+  return `${formatiereZahl(wert, 1)}${NBSP}min`
 }
 
 export function formatiereStunden(wert: number): string {
-  return `${formatiereZahl(wert, 1)} h`
+  return `${formatiereZahl(wert, 1)}${NBSP}h`
 }
 
 /** Sekunden einer Messung: unter 100 s mit einer Dezimalen, sonst ganz. */
 export function formatiereSekunden(wert: number): string {
-  return `${formatiereZahl(wert, wert < 100 ? 1 : 0)} s`
+  return `${formatiereZahl(wert, wert < 100 ? 1 : 0)}${NBSP}s`
 }
 
 /** ISO-Datum (JJJJ-MM-TT) → TT.MM.JJJJ für Briefe/PDF. */

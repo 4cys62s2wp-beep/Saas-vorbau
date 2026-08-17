@@ -64,6 +64,7 @@ export function Kalkulation({
           <AbschlagBereich audit={audit} aktualisiereAudit={aktualisiereAudit} />
           <ErgebnisBlock audit={audit} />
           <VergleichBereich audit={audit} audits={audits} />
+          <PdfBereich audit={audit} audits={audits} />
         </>
       )}
     </div>
@@ -170,6 +171,8 @@ function StundensatzBereich({
                 aktualisiereAudit(audit.id, (a) => ({
                   ...a,
                   stundensatzIntern: Math.round(ergebnis.stundensatz * 100) / 100,
+                  // Herleitung mitspeichern → voller Rechenweg im PDF
+                  stundensatzHerleitung: eingaben,
                 }))
               }
             >
@@ -420,6 +423,51 @@ function ErgebnisBlock({ audit }: { audit: Audit }) {
           <span>{formatiereEuro(k.preisband.obergrenze)}</span>
         </div>
       </div>
+    </section>
+  )
+}
+
+function PdfBereich({ audit, audits }: { audit: Audit; audits: Audit[] }) {
+  const [laeuft, setLaeuft] = useState(false)
+  const partner = audits.find((a) => a.betrieb === audit.betrieb && a.phase !== audit.phase)
+
+  const exportieren = async () => {
+    const probleme: string[] = []
+    if (audit.stundensatzIntern === 0) probleme.push('Stundensatz ist 0 €')
+    if (audit.konservativBegruendung.trim() === '') probleme.push('Abschlags-Begründung fehlt')
+    if (audit.konservativFaktor === 1) probleme.push('Konservativ-Faktor steht auf 1,0')
+    if (
+      probleme.length > 0 &&
+      !window.confirm(`Trotzdem exportieren? Offene Punkte:\n– ${probleme.join('\n– ')}`)
+    ) {
+      return
+    }
+    setLaeuft(true)
+    try {
+      const { exportierePdf } = await import('../lib/pdf')
+      await exportierePdf(audit, partner)
+    } catch (fehler) {
+      window.alert(`PDF-Export fehlgeschlagen: ${fehler instanceof Error ? fehler.message : String(fehler)}`)
+    } finally {
+      setLaeuft(false)
+    }
+  }
+
+  return (
+    <section className="rounded-xl border-2 border-slate-300 bg-white p-4">
+      <h3 className="text-lg font-bold text-slate-900">PDF</h3>
+      <p className="mt-1 text-sm text-slate-600">
+        Druckt Messwerte, kompletten Rechenweg, Preisband{partner ? ', Vergleich mit der anderen Phase' : ''} und den
+        Quellen-/Annahmenblock.
+      </p>
+      <button
+        type="button"
+        disabled={laeuft}
+        onClick={() => void exportieren()}
+        className="mt-3 min-h-12 rounded-xl bg-slate-800 px-6 text-base font-bold text-white active:bg-slate-900 disabled:opacity-40"
+      >
+        {laeuft ? 'Erzeuge PDF …' : 'PDF exportieren'}
+      </button>
     </section>
   )
 }

@@ -41,6 +41,11 @@ export interface Audit {
   konservativFaktor: number
   /** Pflicht-Begründung für den gewählten konservativFaktor (geht ins PDF). */
   konservativBegruendung: string
+  /**
+   * Eingaben des Stundensatzrechners, falls der Satz hergeleitet (nicht manuell
+   * gesetzt) wurde — nur zur Nachvollziehbarkeit im PDF (voller Rechenweg).
+   */
+  stundensatzHerleitung?: StundensatzEingaben
   prozesse: Prozess[]
 }
 
