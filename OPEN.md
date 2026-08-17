@@ -17,6 +17,19 @@ Erzeugt per `scripts/erzeuge-icons.mjs` (dependency-freier PNG-Generator, Stoppu
 public/icon-192.png, icon-512.png, apple-touch-icon.png. Bei Bedarf Motiv im Skript ändern
 und neu ausführen.
 
+## O4: iOS — löscht das Entfernen des Home-Screen-Icons die App-Daten?
+Von Apple nicht dokumentiert, Community-Angaben widersprüchlich (QUELLEN.md Thema 9).
+Auf einem Testgerät mit aktuellem iPadOS prüfen. Bis dahin Arbeitsannahme: ja, Daten
+sind dann weg → vor dem Entfernen/Neuinstallieren immer JSON-Export.
+
+## O5: Vor erstem Kundeneinsatz von Hand gegenlesen (Egress-Sperre dieser Umgebung)
+1. Die vier HWK-Kalkulations-PDFs (Leipzig, OMV, Cottbus, Köln — URLs in QUELLEN.md T1/T3)
+2. Destatis-PM 154/2025 und 148/2026 (T2), BMF-Schreiben v. 18.03.2025 (T6)
+3. § 145 ff. BGB und § 19 UStG einmal direkt auf gesetze-im-internet.de (T5/T6)
+4. WebKit-Blogposts 10218/14403 (T9)
+Alle Aussagen sind mehrfach suchbestätigt; das direkte Gegenlesen ist die letzte
+Meile für „vor dem Steuerberater wörtlich zitierfähig".
+
 ## O3: Versionsstände package.json
 Versionen sind auf Basis des Wissensstands (Anfang 2026) gesetzt und mit ^/~ offen. Falls
 npm install Peer-Konflikte meldet: zuerst @vitejs/plugin-react gegen die zur installierten
