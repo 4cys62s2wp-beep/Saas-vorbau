@@ -27,6 +27,19 @@ Format: Frage / gewählte Option / Alternative / Grund / Revidierbarkeit.
 - **Grund:** Einzelnutzer-Tool mit zwei Ansichten; ein Router ist Overhead und eine Abhängigkeit mehr, die offline nichts beiträgt.
 - **Revidierbar:** Leicht.
 
+## E6: „Soll-Minuten" enthält nicht-automatisierbare Schritte in voller Höhe
+- **Frage:** Auftragstext: „Soll-Minuten = nur automatisierbare Schritte × restaufwandProzent". Wörtlich gelesen fielen nicht-automatisierbare Schritte aus dem Soll komplett heraus — dann stünde ihre volle Zeit als „Ersparnis" im Angebot.
+- **Gewählt:** Soll = nicht-automatisierbare Schritte voll + automatisierbare × Restaufwand. Ersparnis entsteht damit ausschließlich aus automatisierbaren Schritten.
+- **Alternative:** Wörtliche Lesart.
+- **Grund:** Die wörtliche Lesart überhöht die Ersparnis systematisch — genau der Fehler, den ein skeptischer Meister sofort zerlegt. Konservativere Variante gewählt.
+- **Revidierbar:** Leicht — eine Zeile in `berechneSchritt` (`kennzahlen.ts`), Tests decken beide Größen ab.
+
+## E7: Ausreißer werden markiert, nie automatisch gestrichen
+- **Gewählt:** Tukey-Zäune (1,5 × IQR, Quartile Typ 7) markieren verdächtige Werte im UI; Streichen bleibt Nutzerentscheidung. Bei n < 4 keine Markierung (Quartile nicht sinnvoll).
+- **Alternative:** Automatisches Trimmen / Winsorizing.
+- **Grund:** REFA-Konvention (Messwerte nur mit dokumentierbarem Sondereinfluss streichen, siehe QUELLEN.md Thema 4) + Nachvollziehbarkeit vor dem Kunden: eine automatisch bereinigte Messreihe ist nicht mehr die Messung.
+- **Revidierbar:** Leicht — reine Zusatzinformation, ändert keine Kennzahl.
+
 ## E5: Vitest ohne globals, Tests neben den Modulen
 - **Gewählt:** Explizite Imports (`import { describe, it, expect } from 'vitest'`), Tests als `*.test.ts` unter `src/lib/`.
 - **Alternative:** globals: true.
