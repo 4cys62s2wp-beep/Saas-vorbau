@@ -107,7 +107,7 @@ describe('erzeugeAuditPdfDefinition — voller Rechenweg im Dokument', () => {
     }
     const mitVergleich = alsText(erzeugeAuditPdfDefinition(audit, nachmessung))
     expect(mitVergleich).toContain('Nachmessung: gemessene Wirkung')
-    expect(mitVergleich).toContain('Zielerreichung')
+    expect(mitVergleich).toContain('davon erreicht')
   })
 
   it('fehlende Abschlags-Begründung wird sachlich ausgewiesen, nicht verschwiegen', () => {

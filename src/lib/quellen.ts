@@ -29,7 +29,7 @@ export const QUELLEN_ANNAHMEN: QuellenEintrag[] = [
   {
     thema: 'Lohnnebenkosten',
     aussage:
-      'Direkte Arbeitgeber-SV-Anteile 2026: RV 9,3 % + KV 7,3 % + ½ Zusatzbeitrag 1,45 % + PV 1,8 % + AV 1,3 % = 21,15 %; zzgl. U1/U2 (kassenindividuell), U3 0,15 %, Berufsgenossenschaft → Zuschlag typ. 22–28 %',
+      'Direkte Arbeitgeber-SV-Anteile 2026: RV 9,3 % + KV 7,3 % + ½ Zusatzbeitrag 1,45 % + PV 1,8 % + AV 1,3 % = 21,15 %; zzgl. U1/U2 (kassenindividuell), U3 0,15 %, Berufsgenossenschaft; Zuschlag typischerweise 22–28 %',
     quelle: 'RVBeitrSBek 2026 (gesetze-im-internet), BMG/vdek, DGUV, Haufe',
     url: 'https://www.gesetze-im-internet.de/rvbeitrsbek_2026/BJNR1230A0025.html',
     stand: '2026',
@@ -79,7 +79,7 @@ export const QUELLEN_ANNAHMEN: QuellenEintrag[] = [
   },
   {
     thema: 'Median statt Mittelwert',
-    aussage: 'Median hat Bruchpunkt 50 % (maximal robust), Mittelwert 1/n → 0: ein einziger untypischer Messwert kann den Durchschnitt beliebig verfälschen — deshalb rechnet das Tool je Schritt mit dem Median',
+    aussage: 'Median hat Bruchpunkt 50 % (maximal robust), Mittelwert dagegen 1/n, also gegen null: ein einziger untypischer Messwert kann den Durchschnitt beliebig verfälschen — deshalb rechnet das Tool je Schritt mit dem Median',
     quelle: 'Wilcox (Robust Estimation, via RobustStats.jl), Irizarry (dsbook), Uni-Skripte Geyer/Stark',
     url: 'https://www.stat.umn.edu/geyer/f07/5601/notes/break.pdf',
     stand: 'Lehrbuchstand, geprüft 08/2026',
@@ -147,7 +147,7 @@ export const QUELLEN_ANNAHMEN: QuellenEintrag[] = [
   {
     thema: 'Datensicherheit iPad',
     aussage:
-      'IndexedDB ist Best-Effort-Speicher: Home-Screen-Web-Apps sind von der 7-Tage-Löschregel ausgenommen (WebKit 2020), aber Speicherdruck-Eviction und belegte WebKit-Bugs können Daten löschen → regelmäßiger JSON-Export ist Pflicht-Arbeitsschritt',
+      'IndexedDB ist Best-Effort-Speicher: Home-Screen-Web-Apps sind von der 7-Tage-Löschregel ausgenommen (WebKit 2020), aber Speicherdruck-Eviction und belegte WebKit-Bugs können Daten löschen; regelmäßiger JSON-Export ist Pflicht-Arbeitsschritt',
     quelle: 'MDN Storage-Doku (Quellspiegel wörtlich gelesen); WebKit-Blog 10218/14403; WebKit-Bug 266559',
     url: 'https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria',
     stand: 'geprüft 08/2026',

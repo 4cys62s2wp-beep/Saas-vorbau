@@ -217,7 +217,7 @@ export function erzeugeAuditPdfDefinition(
         `Prognose war ${formatiereEuro(vergleich.prognoseEuroProJahr)} pro Jahr` +
           (vergleich.zielerreichungProzent === null
             ? ''
-            : ` → Zielerreichung ${formatiereProzent(vergleich.zielerreichungProzent)}`),
+            : `; davon erreicht: ${formatiereProzent(vergleich.zielerreichungProzent)}`),
       ],
       margin: [0, 0, 0, 10],
     })
