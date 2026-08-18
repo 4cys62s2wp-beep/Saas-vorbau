@@ -106,6 +106,25 @@ describe('berechneProzess', () => {
     expect(k.ersparnisMinutenProMonat).toBeCloseTo(15)
   })
 
+  it('weist die Dauer eines einzelnen Durchlaufs aus', () => {
+    const k = berechneProzess(
+      prozess({
+        haeufigkeitProMonat: 20,
+        schritte: [
+          // 5 min, davon bleiben 20 % übrig
+          schritt({ id: 'a', messungenSek: [300, 300, 300, 300, 300], automatisierbar: true, restaufwandProzent: 20 }),
+          // 2 min, nicht automatisierbar
+          schritt({ id: 'b', messungenSek: [120, 120, 120, 120, 120] }),
+        ],
+      }),
+    )
+    expect(k.istMinutenProDurchlauf).toBeCloseTo(7)
+    expect(k.sollMinutenProDurchlauf).toBeCloseTo(3)
+    // Durchlauf × Häufigkeit muss die Monatssumme ergeben — sonst stimmt der Rechenweg nicht.
+    expect(k.istMinutenProDurchlauf * k.haeufigkeitProMonat).toBeCloseTo(k.istMinutenProMonat)
+    expect(k.sollMinutenProDurchlauf * k.haeufigkeitProMonat).toBeCloseTo(k.sollMinutenProMonat)
+  })
+
   it('warnt, wenn ein Prozess mit Schritten die Häufigkeit 0 hat', () => {
     const k = berechneProzess(
       prozess({ haeufigkeitProMonat: 0, schritte: [schritt({})] }),

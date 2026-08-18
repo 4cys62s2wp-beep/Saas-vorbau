@@ -4,6 +4,7 @@ import { berechneAudit, vergleicheAudits, type AuditVergleich } from './kennzahl
 import {
   anzeigeName,
   formatiereDatum,
+  formatiereDauer,
   formatiereEuro,
   formatiereMinuten,
   formatiereProzent,
@@ -71,6 +72,18 @@ export function erzeugeAuditPdfDefinition(
       style: 'h2',
       margin: [0, 8, 0, 4],
     })
+
+    if (pk.schritte.length > 0) {
+      inhalt.push({
+        text:
+          `Ein Durchlauf dauert heute ${formatiereDauer(pk.istMinutenProDurchlauf)}, nach der ` +
+          `Automatisierung ${formatiereDauer(pk.sollMinutenProDurchlauf)}. ` +
+          `Bei ${formatiereZahl(pk.haeufigkeitProMonat, pk.haeufigkeitProMonat % 1 === 0 ? 0 : 1)} Durchläufen im Monat ` +
+          `ergibt das die Summen in der letzten Zeile.`,
+        style: 'klein',
+        margin: [0, 0, 0, 4],
+      })
+    }
 
     if (pk.schritte.length === 0) {
       inhalt.push({

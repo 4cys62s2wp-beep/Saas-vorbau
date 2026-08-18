@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { anzeigeName, formatiereDatum, formatiereEuro, formatiereProzent, mehrzahl, NBSP } from './format'
+import {
+  anzeigeName,
+  formatiereDatum,
+  formatiereDauer,
+  formatiereEuro,
+  formatiereProzent,
+  mehrzahl,
+  NBSP,
+} from './format'
 
 describe('anzeigeName', () => {
   it('ersetzt leere Namen durch einen Platzhalter', () => {
@@ -18,6 +26,22 @@ describe('mehrzahl', () => {
     expect(mehrzahl(1, 'Messung', 'Messungen')).toBe('1 Messung')
     expect(mehrzahl(0, 'Messung', 'Messungen')).toBe('0 Messungen')
     expect(mehrzahl(5, 'Messung', 'Messungen')).toBe('5 Messungen')
+  })
+})
+
+describe('formatiereDauer', () => {
+  it('zeigt kurze Dauern in Sekunden', () => {
+    expect(formatiereDauer(0.7)).toBe(`42,0${NBSP}s`)
+    expect(formatiereDauer(0.05)).toBe(`3,0${NBSP}s`)
+  })
+
+  it('zeigt längere Dauern in Minuten', () => {
+    expect(formatiereDauer(1)).toBe(`1,0${NBSP}min`)
+    expect(formatiereDauer(7.5)).toBe(`7,5${NBSP}min`)
+  })
+
+  it('null bleibt null Minuten', () => {
+    expect(formatiereDauer(0)).toBe(`0,0${NBSP}min`)
   })
 })
 

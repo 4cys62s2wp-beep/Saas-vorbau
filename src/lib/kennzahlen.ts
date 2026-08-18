@@ -41,6 +41,9 @@ export interface ProzessKennzahlen {
   prozessId: string
   name: string
   haeufigkeitProMonat: number
+  /** Dauer eines einzelnen Durchlaufs — die Zahl, die im Betrieb jeder kennt. */
+  istMinutenProDurchlauf: number
+  sollMinutenProDurchlauf: number
   istMinutenProMonat: number
   sollMinutenProMonat: number
   ersparnisMinutenProMonat: number
@@ -142,10 +145,19 @@ export function berechneProzess(
       `Prozess "${p.name}": Häufigkeit steht auf 0 — er fließt mit keiner Minute in die Rechnung ein.`,
     )
   }
+  // Je Durchlauf: Summe der mittleren Schrittdauern, unabhängig von der Häufigkeit.
+  const istProDurchlauf = schritte.reduce((a, s) => a + (s.medianSek ?? 0) / 60, 0)
+  const sollProDurchlauf = schritte.reduce((a, s) => {
+    const anteil = s.istMinutenProMonat === 0 ? 0 : s.sollMinutenProMonat / s.istMinutenProMonat
+    return a + ((s.medianSek ?? 0) / 60) * anteil
+  }, 0)
+
   return {
     prozessId: p.id,
     name: p.name,
     haeufigkeitProMonat: p.haeufigkeitProMonat,
+    istMinutenProDurchlauf: istProDurchlauf,
+    sollMinutenProDurchlauf: sollProDurchlauf,
     istMinutenProMonat: ist,
     sollMinutenProMonat: soll,
     ersparnisMinutenProMonat: ist - soll,

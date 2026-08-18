@@ -40,6 +40,15 @@ export function formatiereStunden(wert: number): string {
   return `${formatiereZahl(wert, 1)}${NBSP}h`
 }
 
+/**
+ * Dauer verständlich ausgeben: Unter einer Minute in Sekunden, darüber in
+ * Minuten. „0,0 min“ für einen Handgriff von 40 Sekunden sagt niemandem etwas.
+ */
+export function formatiereDauer(minuten: number): string {
+  if (minuten > 0 && minuten < 1) return formatiereSekunden(minuten * 60)
+  return formatiereMinuten(minuten)
+}
+
 /** Sekunden einer Messung: unter 100 s mit einer Dezimalen, sonst ganz. */
 export function formatiereSekunden(wert: number): string {
   return `${formatiereZahl(wert, wert < 100 ? 1 : 0)}${NBSP}s`

@@ -12,6 +12,7 @@ import {
 import { KONSERVATIV_BEGRUENDUNGEN } from '../lib/quellen'
 import {
   anzeigeName,
+  formatiereDauer,
   formatiereEuro,
   formatiereMinuten,
   formatiereProzent,
@@ -231,6 +232,12 @@ function BewertungsAbschnitt({
                 Monat
               </span>
             </h3>
+            {pk.schritte.length > 0 && (
+              <p className="zahl text-sm text-tinte-schwach">
+                Ein Durchlauf dauert heute {formatiereDauer(pk.istMinutenProDurchlauf)}, nach der
+                Automatisierung {formatiereDauer(pk.sollMinutenProDurchlauf)}.
+              </p>
+            )}
             {pk.schritte.length === 0 ? (
               <p className="mt-1 text-tinte-schwach">
                 Für diesen Prozess ist noch kein Arbeitsschritt erfasst.

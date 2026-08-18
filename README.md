@@ -83,14 +83,16 @@ vom iPad zum Rechner.
 | `src/lib/pdf.ts` | PDF-Aufbau mit vollständigem Rechenweg |
 | `src/lib/quellen.ts` | Quellenanhang und rechtliche Hinweise fürs PDF |
 | `src/components/` | Oberfläche: Betriebsleiste, Messen, Auswerten, Stoppuhr |
-| `scripts/smoke.mjs` | Funktionsprüfung im echten Browser (29 Prüfungen) |
+| `src/lib/zahlen.ts` | Zahleneingaben einlesen (Punkt/Komma, Tausendertrennung) |
+| `scripts/smoke.mjs` | Funktionsprüfung im echten Browser (35 Prüfungen) |
 
 ## Prüfen
 
 ```bash
-npm run test:run   # 62 Tests der Rechenlogik und des PDF
-npm run preview    # in einem zweiten Fenster:
-node scripts/smoke.mjs   # kompletter Ablauf im Browser bis zum PDF
+npm run test:run          # 94 Tests der Rechenlogik und des PDF
+# Für die Browser-Prüfung einmalig: npx playwright install chromium
+npm run preview           # und in einem zweiten Fenster:
+npm run test:browser      # kompletter Ablauf im Browser bis zum PDF (35 Prüfungen)
 ```
 
 ## Weitere Unterlagen
