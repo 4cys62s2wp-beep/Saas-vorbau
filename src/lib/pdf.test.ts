@@ -115,6 +115,26 @@ describe('erzeugeAuditPdfDefinition — voller Rechenweg im Dokument', () => {
     expect(ohne).toContain('nicht angegeben')
   })
 
+  it('setzt die eigenen Angaben als Absenderzeile in den Briefkopf', () => {
+    const mit = alsText(
+      erzeugeAuditPdfDefinition(audit, undefined, {
+        name: 'Max Mustermann',
+        strasse: 'Beispielweg 4',
+        ort: '84028 Landshut',
+        kontakt: '0871 1234567',
+      }),
+    )
+    expect(mit).toContain('Max Mustermann · Beispielweg 4 · 84028 Landshut · 0871 1234567')
+  })
+
+  it('lässt die Absenderzeile weg, wenn keine Angaben gemacht wurden', () => {
+    const ohne = alsText(
+      erzeugeAuditPdfDefinition(audit, undefined, { name: '', strasse: '', ort: '', kontakt: '' }),
+    )
+    // Kein leerer Trennstrich, kein Platzhaltertext
+    expect(ohne).not.toContain(' · ')
+  })
+
   it('nennt den Sicherheitsabschlag als Prozentwert UND als Faktor', () => {
     // Der Kunde versteht "20 %", der Steuerberater rechnet mit dem Faktor nach.
     expect(text).toContain('Sicherheitsabschlag 20')

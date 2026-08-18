@@ -1,5 +1,5 @@
 import { get, set } from 'idb-keyval'
-import type { Audit } from '../types'
+import type { Absender, Audit } from '../types'
 
 /**
  * Persistenz: ein einziger Key in IndexedDB (idb-keyval) mit allen Audits.
@@ -34,6 +34,18 @@ export async function persistentSpeicherAnfordern(): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+const ABSENDER_KEY = 'prozess-audit:absender'
+
+export const LEERER_ABSENDER: Absender = { name: '', strasse: '', ort: '', kontakt: '' }
+
+export async function ladeAbsender(): Promise<Absender> {
+  return (await get<Absender>(ABSENDER_KEY)) ?? LEERER_ABSENDER
+}
+
+export async function speichereAbsender(absender: Absender): Promise<void> {
+  await set(ABSENDER_KEY, absender)
 }
 
 const LETZTER_EXPORT_KEY = 'prozess-audit:letzter-export'

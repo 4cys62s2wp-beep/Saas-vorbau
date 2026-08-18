@@ -1,61 +1,72 @@
-# STATUS — Endstand 2026-08-17
+# STATUS — Stand 2026-08-18
 
-**In einem Satz:** v1 ist fertig und gepusht (Branch
-`claude/audit-tool-research-phase-wh2r5z`) — QUELLEN.md komplett (11 Themen),
-48/48 Unit-Tests grün, Browser-Smoke-Test von Messung bis PDF-Download grün,
-Build inkl. PWA läuft. **Eine Sache ist ausgefallen: die adversariale
-Gegenprüfung der Recherche** (Monats-Ausgabenlimit) — Ersatz ist die
-Handprüf-Liste OPEN.md O5, ca. 10 Klicks.
+**In einem Satz:** Das Programm ist fertig, umgestellt auf eine schlichte
+Schwarz-Weiß-Oberfläche und um die fehlenden Grundfunktionen ergänzt
+(Löschen, Umbenennen, Nachmessung, eigene Absenderangaben). Alles ist geprüft:
+59 Tests der Rechenlogik und 29 Prüfungen im echten Browser laufen durch,
+einschließlich PDF-Erstellung.
 
 ## Was du als Erstes tun solltest
-1. `./RUNME.sh` laufen lassen (reproduziert Install → Typecheck → Tests → Build).
-2. **`ABSENDER` in `src/lib/quellen.ts` befüllen** (dein Name ausgeschrieben +
-   ladungsfähige Anschrift). Pflichtangabe auf Geschäftsbriefen, QUELLEN.md T5 —
-   ich habe bewusst nichts erfunden. Ohne das fehlt die Zeile im PDF.
-3. QUELLEN.md lesen, dann OPEN.md O5 abarbeiten (die TEILVERIFIZIERT-Quellen
-   einmal von Hand öffnen), bevor Zahlen in ein echtes Angebot gehen.
+1. `./RUNME.sh` laufen lassen (installieren, prüfen, testen, bauen).
+2. Im Programm unter **Auswerten → PDF → Meine Angaben** Namen und Anschrift
+   eintragen — Pflichtangabe auf Geschäftsbriefen. Steht sie nicht drin,
+   meldet das Programm es vor jedem PDF.
+3. QUELLEN.md lesen; vor dem ersten echten Angebot die Liste in OPEN.md O5
+   abarbeiten (rund zehn Klicks auf die Quellen, die hier nicht direkt
+   abrufbar waren).
 
-## Fertig — alles hier real ausgeführt, nicht nur geschrieben
-**Verifiziert:** `tsc --noEmit` sauber · Vitest **48/48 grün** · `vite build` inkl.
-Service-Worker ok · Playwright-Smoke-Test **15/15 grün** (echter Chromium: Audit
-anlegen → Stoppuhr → 3 Messungen → Reload übersteht IndexedDB → Kalkulation →
-Toggle → PDF-Download mit `%PDF-`-Signatur → JSON-Export).
+## Fertig — alles hier ausgeführt, nicht nur geschrieben
+**Geprüft:** `tsc` ohne Beanstandung · 59 Tests grün · `vite build` inklusive
+Offline-Fähigkeit · 29 Browser-Prüfungen grün (Betrieb anlegen, messen,
+umbenennen, löschen, Neustart übersteht die Daten, Stundensatz rechnen,
+bewerten, Abschlag, PDF mit gültiger Signatur, Sicherungsdatei, Nachmessung,
+Vergleich).
 
-- **Datenmodell/Logik:** `types.ts`, `lib/statistik.ts` (Median, Quartile Typ 7,
-  Tukey-Ausreißer), `lib/kennzahlen.ts` (Ist/Soll/Ersparnis/Preisband,
-  Baseline↔Nachmessung), `lib/stundensatz.ts`, `lib/format.ts` (de-DE + NBSP),
-  `lib/exportImport.ts` (validierender Import), `lib/storage.ts`, `lib/konstanten.ts`
-- **Tests:** `statistik.test.ts`, `kennzahlen.test.ts`, `stundensatz.test.ts`,
-  `exportImport.test.ts`, `pdf.test.ts` — inkl. aller geforderten Randfälle
-  (eine Messung, leere Reihe, Ausreißer, Restaufwand 0 %/100 %, Ersparnis ≤ 0)
-- **Erfassung (iPad):** `components/Stoppuhr.tsx` (Start/Runde/Stopp/Verwerfen),
-  `components/Erfassung.tsx` (große Touch-Targets, Warnschwelle, Ausreißer-Chips)
-- **Kalkulation (Mac):** `components/Kalkulation.tsx` (Schritttabelle, Toggle,
-  Restaufwand-Slider, Stundensatzrechner, Pflicht-Abschlag mit Begründung +
-  belegbaren Begründungsvorschlägen, Ergebnisblock, Vergleich, PDF-Knopf)
-- **PDF:** `lib/pdf.ts` — Rohmesswerte, jeder Rechenschritt, Stundensatz-Herleitung,
-  Preisband, Vergleich, Messqualitäts-Hinweise, rechtliche Hinweise,
-  Quellen-/Annahmenblock mit Statusangaben
-- **Rahmen:** `App.tsx` (Ansichten, Export/Import, Export-Erinnerung), PWA
-  (`vite.config.ts` + Icons via `scripts/erzeuge-icons.mjs`), `scripts/smoke.mjs`
-- **Doku:** `QUELLEN.md` (11 Themen), `README.md`, `ENTSCHEIDUNGEN.md` (E1–E7),
-  `OPEN.md` (O1–O8), `RUNME.sh`
+- **Rechenlogik:** `types.ts`, `lib/statistik.ts`, `lib/kennzahlen.ts`,
+  `lib/stundensatz.ts`, `lib/audit.ts`, `lib/format.ts`, `lib/exportImport.ts`,
+  `lib/storage.ts`, `lib/konstanten.ts`, `lib/quellen.ts`
+- **Oberfläche:** `components/ui.tsx` (gemeinsame Bausteine),
+  `AuditLeiste.tsx`, `Erfassung.tsx`, `Stoppuhr.tsx`, `Kalkulation.tsx`, `App.tsx`
+- **PDF:** `lib/pdf.ts` — Messwerte, vollständiger Rechenweg,
+  Stundensatz-Herleitung, Preisrahmen, Vergleich, Quellenanhang ab neuer Seite
+- **Tests:** sechs Dateien mit 59 Tests, `scripts/smoke.mjs` mit 29 Prüfungen
+- **Unterlagen:** QUELLEN.md (11 Themen), README.md, ENTSCHEIDUNGEN.md (E1–E11),
+  OPEN.md (O1–O9), RUNME.sh
+
+## In dieser Runde geändert
+- **Gestaltung:** ausschließlich Schwarz, Weiß, Grau; Zustände über Kontrast
+  statt Farbe; nummerierte Abschnitte führen durch den Ablauf; klare Schrift,
+  große Schaltflächen.
+- **Sprache:** „Sicherheitsabschlag 20 %" statt „Faktor 0,8" (Faktor wird
+  daneben und im PDF weiterhin genannt), „Messung speichern" statt „Runde",
+  „Messen/Auswerten" statt „Erfassung/Kalkulation".
+- **Ergänzt, weil es fehlte:** Löschen und Umbenennen für Betrieb, Prozess und
+  Arbeitsschritt; Nachmessung aus der Erstmessung erzeugen; eigene
+  Absenderangaben im Programm; Prüfliste offener Punkte vor dem PDF.
+- **Aufgeräumt:** doppelte Betriebsauswahl zusammengeführt, ungenutzte
+  Konstanten entfernt, Systemdialoge durch Meldungen in der Seite ersetzt,
+  Pluralformen korrigiert, leere Tabellen vermieden.
+- **Behoben:** Schrift auf invertierten Flächen war unsichtbar (CSS-Regeln
+  außerhalb der Layer setzten die Textfarben außer Kraft).
 
 ## Was NICHT fertig ist (ehrlich)
-- **Adversariale Gegenprüfung der Recherche: ausgefallen.** 11 von 22
-  Workflow-Agenten sind am Monats-Ausgabenlimit gescheitert — es waren genau die
-  Prüf-Agenten. Die Statusangaben in QUELLEN.md sind damit Selbsteinschätzung
-  ohne Zweitmeinung; ich habe **nichts hochgestuft**. Details: OPEN.md O8.
-- **Lernkurven-/J-Kurven-Literatur** (Einlernverluste) unrecherchiert → im Tool
-  bewusst **keine** Prozentwerte daraus. OPEN.md O7.
-- **Produktivstunden-Mini-Rechner** (Urlaub/Feiertage/Krank einzeln) ist als
-  Ausbaustufe beschrieben, aber nicht gebaut — aktuell gibst du die produktiven
-  Stunden direkt ein (belegte Referenz 1.455–1.503 h steht als Platzhaltertext im Feld).
-- **pdfmake 0.2.23 statt 0.3.x** — funktioniert nachweislich, Upgrade optional (O6).
+- **Adversariale Gegenprüfung der Recherche: ausgefallen** — die elf
+  Prüfdurchläufe scheiterten am Monats-Ausgabenlimit. Die Angaben in
+  QUELLEN.md sind Selbsteinschätzung ohne Zweitmeinung; nichts wurde
+  hochgestuft. Ersatz ist die Handprüf-Liste OPEN.md O5. (OPEN.md O8)
+- **Lernkurven-Literatur** unrecherchiert → im Programm bewusst keine
+  Prozentwerte daraus (OPEN.md O7).
+- **Produktivstunden-Rechner** (Urlaub, Feiertage, Krankheit einzeln) nicht
+  gebaut; die produktiven Stunden werden direkt eingegeben, die belegte
+  Referenz 1.455–1.503 steht als Hilfetext im Feld.
+- **Rechtliche Textbausteine im PDF** sind fest hinterlegt und nur im Quelltext
+  änderbar (OPEN.md O9).
+- **pdfmake 0.2.23 statt 0.3.x** — funktioniert nachweislich, Umstieg optional
+  (OPEN.md O6).
 
 ## Offene Annahmen
-OPEN.md: O1 (Netzlage → Verifikationstiefe), O4 (löscht Icon-Entfernen die Daten?
-auf Testgerät prüfen), O5 (Handprüf-Liste), O6/O7/O8 wie oben.
-Entscheidungen inkl. Begründung: ENTSCHEIDUNGEN.md E1–E7 — besonders **E6**
-(„Soll" enthält nicht-automatisierbare Schritte voll; die wörtliche
+OPEN.md O1 (Netzlage → Prüftiefe der Quellen), O4 (löscht das Entfernen des
+Symbols vom Home-Bildschirm die Daten? auf einem Testgerät prüfen), O5–O9.
+Entscheidungen mit Begründung: ENTSCHEIDUNGEN.md E1–E11 — besonders **E6**
+(nicht automatisierbare Schritte bleiben im Soll enthalten; die wörtliche
 Auftragslesart hätte die Ersparnis überhöht).

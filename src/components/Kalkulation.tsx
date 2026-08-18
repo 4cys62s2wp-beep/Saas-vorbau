@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
-import type { Audit, Prozess, Schritt } from '../types'
+import { useEffect, useMemo, useState } from 'react'
+import type { Absender, Audit, Prozess, Schritt } from '../types'
+import { LEERER_ABSENDER, ladeAbsender, speichereAbsender } from '../lib/storage'
 import { berechneAudit, vergleicheAudits } from '../lib/kennzahlen'
 import { berechneStundensatz } from '../lib/stundensatz'
 import { abschlagProzentAusFaktor, faktorAusAbschlagProzent, offenePunkte } from '../lib/audit'
@@ -541,15 +542,32 @@ function VergleichAbschnitt({ audit, audits }: { audit: Audit; audits: Audit[] }
 function PdfAbschnitt({ audit, audits }: { audit: Audit; audits: Audit[] }) {
   const [laeuft, setLaeuft] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
+  const [absender, setAbsender] = useState<Absender>(LEERER_ABSENDER)
+  const [angabenOffen, setAngabenOffen] = useState(false)
   const partner = audits.find((a) => a.betrieb === audit.betrieb && a.phase !== audit.phase)
+
+  useEffect(() => {
+    void ladeAbsender().then(setAbsender)
+  }, [])
+
+  const aendere = (feld: keyof Absender, wert: string) => {
+    const neu = { ...absender, [feld]: wert }
+    setAbsender(neu)
+    void speichereAbsender(neu)
+  }
+
+  const absenderFehlt = absender.name.trim() === '' || absender.strasse.trim() === '' || absender.ort.trim() === ''
   const punkte = offenePunkte(audit)
+  if (absenderFehlt) {
+    punkte.push('Ihre eigenen Angaben für den Briefkopf fehlen (Name und Anschrift).')
+  }
 
   const exportieren = async () => {
     setLaeuft(true)
     setFehler(null)
     try {
       const { exportierePdf } = await import('../lib/pdf')
-      await exportierePdf(audit, partner)
+      await exportierePdf(audit, partner, absender)
     } catch (e) {
       setFehler(e instanceof Error ? e.message : String(e))
     } finally {
@@ -563,8 +581,50 @@ function PdfAbschnitt({ audit, audits }: { audit: Audit; audits: Audit[] }) {
       titel="PDF für den Kunden"
       hinweis={`Enthält alle gemessenen Zeiten, den vollständigen Rechenweg, den Preisrahmen${
         partner ? ', den Vergleich beider Messungen' : ''
-      } sowie die Quellen- und Annahmenübersicht.`}
+      } sowie die Quellen- und Annahmenübersicht im Anhang.`}
+      aktionen={
+        <Knopf onClick={() => setAngabenOffen(!angabenOffen)} aktiv={angabenOffen}>
+          Meine Angaben
+        </Knopf>
+      }
     >
+      {angabenOffen && (
+        <div className="mb-4 border-b border-linie pb-4">
+          <p className="mb-3 text-sm text-tinte-schwach">
+            Diese Angaben erscheinen als Absenderzeile im PDF. Auf Geschäftsbriefen sind
+            ausgeschriebener Vor- und Nachname sowie eine ladungsfähige Anschrift verpflichtend —
+            ein Postfach genügt nicht (Beleg: QUELLEN.md, Thema 5). Sie werden auf diesem Gerät
+            gespeichert und gelten für alle PDFs.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Feld
+              label="Vor- und Nachname"
+              placeholder="Vorname und Nachname"
+              value={absender.name}
+              onChange={(e) => aendere('name', e.target.value)}
+            />
+            <Feld
+              label="Straße und Hausnummer"
+              placeholder="z. B. Beispielweg 4"
+              value={absender.strasse}
+              onChange={(e) => aendere('strasse', e.target.value)}
+            />
+            <Feld
+              label="Postleitzahl und Ort"
+              placeholder="z. B. 84028 Landshut"
+              value={absender.ort}
+              onChange={(e) => aendere('ort', e.target.value)}
+            />
+            <Feld
+              label="Telefon und E-Mail"
+              placeholder="z. B. 0871 1234567 · post@beispiel.de"
+              value={absender.kontakt}
+              onChange={(e) => aendere('kontakt', e.target.value)}
+            />
+          </div>
+        </div>
+      )}
+
       {punkte.length > 0 && (
         <div className="mb-3 flex flex-col gap-2">
           {punkte.map((p) => (

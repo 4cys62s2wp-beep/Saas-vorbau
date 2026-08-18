@@ -167,10 +167,26 @@ pruefe(!/NaN|Infinity|undefined/.test(ergebnisText), 'Ergebnis enthält keine fe
 pruefe(/Preisrahmen/.test(ergebnisText), 'Preisrahmen wird ausgewiesen')
 pruefe(/€/.test(ergebnisText), 'Beträge werden in Euro dargestellt')
 
+// ------------------------------------------------------- Eigene Angaben
+const pdfAbschnitt = abschnitt('PDF für den Kunden')
+pruefe(
+  (await pdfAbschnitt.getByText('Briefkopf fehlen').count()) === 1,
+  'fehlende Absenderangaben werden vor dem PDF angemahnt',
+)
+await pdfAbschnitt.getByRole('button', { name: 'Meine Angaben' }).click()
+await pdfAbschnitt.getByLabel('Vor- und Nachname').fill('Max Mustermann')
+await pdfAbschnitt.getByLabel('Straße und Hausnummer').fill('Beispielweg 4')
+await pdfAbschnitt.getByLabel('Postleitzahl und Ort').fill('84028 Landshut')
+await pdfAbschnitt.getByLabel('Telefon und E-Mail').fill('0871 1234567')
+pruefe(
+  (await pdfAbschnitt.getByText('Briefkopf fehlen').count()) === 0,
+  'nach Eingabe der eigenen Angaben ist der Hinweis erledigt',
+)
+
 // ---------------------------------------------------------------------- PDF
 const [pdf] = await Promise.all([
   seite.waitForEvent('download', { timeout: 30000 }),
-  abschnitt('PDF für den Kunden').getByRole('button', { name: 'PDF erstellen' }).click(),
+  pdfAbschnitt.getByRole('button', { name: 'PDF erstellen' }).click(),
 ])
 const pfad = await pdf.path()
 pruefe(!!pfad, `PDF wird erzeugt (${pdf.suggestedFilename()})`)

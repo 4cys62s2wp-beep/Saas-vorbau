@@ -181,9 +181,10 @@ export const ANGEBOT_HINWEISE: string[] = [
 ]
 
 /**
- * Absenderangaben fürs PDF. Pflicht laut IHK-Auffassung (QUELLEN.md Thema 5):
- * ausgeschriebener Vor- und Nachname + ladungsfähige Anschrift (kein Postfach).
- * TODO(Nutzer): eigene Daten eintragen — bewusst nicht erfunden.
+ * Rückfallwert für die Absenderzeile. Die tatsächlichen Angaben trägt der
+ * Nutzer im Programm ein (Auswertung → PDF → „Meine Angaben“); sie liegen im
+ * Gerätespeicher. Bleibt hier leer, damit niemals erfundene Daten in einem
+ * Kundendokument landen.
  */
 export const ABSENDER = {
   name: '',

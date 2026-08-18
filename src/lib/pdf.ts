@@ -1,5 +1,5 @@
 import type { Content, TDocumentDefinitions, TableCell } from 'pdfmake/interfaces'
-import type { Audit } from '../types'
+import type { Absender, Audit } from '../types'
 import { berechneAudit, vergleicheAudits, type AuditVergleich } from './kennzahlen'
 import {
   formatiereDatum,
@@ -25,6 +25,7 @@ import { ABSENDER, ANGEBOT_HINWEISE, QUELLEN_ANNAHMEN } from './quellen'
 export function erzeugeAuditPdfDefinition(
   audit: Audit,
   partnerAudit?: Audit,
+  absender: Absender = ABSENDER,
 ): TDocumentDefinitions {
   const k = berechneAudit(audit)
 
@@ -40,7 +41,7 @@ export function erzeugeAuditPdfDefinition(
   const inhalt: Content[] = []
 
   // ── Kopf ────────────────────────────────────────────────────────────────
-  const absenderZeile = [ABSENDER.name, ABSENDER.strasse, ABSENDER.ort, ABSENDER.kontakt]
+  const absenderZeile = [absender.name, absender.strasse, absender.ort, absender.kontakt]
     .filter((t) => t.trim() !== '')
     .join(' · ')
   if (absenderZeile !== '') {
@@ -72,14 +73,14 @@ export function erzeugeAuditPdfDefinition(
 
     const zeilen: TableCell[][] = [
       [
-        { text: 'Schritt', style: 'th' },
+        { text: 'Arbeitsschritt', style: 'th' },
         { text: 'Messwerte (s)', style: 'th' },
         { text: 'n', style: 'th' },
         { text: 'Median', style: 'th' },
-        { text: 'Ist min/Monat', style: 'th' },
+        { text: 'Heute', style: 'th' },
         { text: 'autom.', style: 'th' },
         { text: 'Rest', style: 'th' },
-        { text: 'Soll min/Monat', style: 'th' },
+        { text: 'Künftig', style: 'th' },
         { text: 'Ersparnis', style: 'th' },
       ],
     ]
@@ -119,9 +120,14 @@ export function erzeugeAuditPdfDefinition(
     ])
 
     inhalt.push({
-      table: { headerRows: 1, widths: ['*', 90, 18, 40, 48, 30, 30, 48, 48], body: zeilen },
+      table: { headerRows: 1, widths: ['*', 78, 14, 34, 40, 26, 26, 40, 44], body: zeilen },
       layout: 'lightHorizontalLines',
       fontSize: 8,
+    })
+    inhalt.push({
+      text: '„Heute“, „Künftig“ und „Ersparnis“ in Minuten pro Monat.',
+      style: 'klein',
+      margin: [0, 2, 0, 0],
     })
   }
 
@@ -234,7 +240,21 @@ export function erzeugeAuditPdfDefinition(
   }
 
   // ── Quellen-/Annahmenblock ──────────────────────────────────────────────
-  inhalt.push({ text: 'Quellen und Annahmen', style: 'h2', margin: [0, 8, 0, 4] })
+  // Der Quellennachweis ist Anhang: er beginnt auf einer neuen Seite, damit das
+  // eigentliche Ergebnis für sich steht und trotzdem jede Zahl belegt ist.
+  inhalt.push({
+    text: 'Anhang: Quellen und Annahmen',
+    style: 'h2',
+    pageBreak: 'before',
+    margin: [0, 0, 0, 2],
+  })
+  inhalt.push({
+    text:
+      'Grundlage der oben verwendeten Rechengrößen. Die gemessenen Prozesszeiten selbst stammen ' +
+      'ausschließlich aus der Messung vor Ort und sind in der Tabelle am Anfang vollständig abgedruckt.',
+    style: 'klein',
+    margin: [0, 0, 0, 6],
+  })
   const qZeilen: TableCell[][] = [
     [
       { text: 'Annahme', style: 'th' },
@@ -250,8 +270,9 @@ export function erzeugeAuditPdfDefinition(
     ])
   }
   inhalt.push({
-    table: { headerRows: 1, widths: ['*', 170, 70], body: qZeilen },
+    table: { headerRows: 1, widths: ['*', 165, 62], body: qZeilen },
     layout: 'lightHorizontalLines',
+    fontSize: 7,
   })
   inhalt.push({
     text:
@@ -288,7 +309,11 @@ export function erzeugeAuditPdfDefinition(
 }
 
 /** Browser-seitiges Rendern und Herunterladen. */
-export async function exportierePdf(audit: Audit, partnerAudit?: Audit): Promise<void> {
+export async function exportierePdf(
+  audit: Audit,
+  partnerAudit?: Audit,
+  absender?: Absender,
+): Promise<void> {
   // Dynamischer Import: pdfmake (~2 MB mit Fonts) wird erst beim ersten Export geladen.
   const [{ default: pdfMake }, vfsModul] = await Promise.all([
     import('pdfmake/build/pdfmake'),
@@ -303,6 +328,6 @@ export async function exportierePdf(audit: Audit, partnerAudit?: Audit): Promise
       (roh as unknown as Record<string, string>))
   pdfMake.vfs = vfs
   pdfMake
-    .createPdf(erzeugeAuditPdfDefinition(audit, partnerAudit))
+    .createPdf(erzeugeAuditPdfDefinition(audit, partnerAudit, absender))
     .download(`prozess-audit-${audit.betrieb.replace(/[^\wäöüÄÖÜß-]+/g, '_')}-${audit.datum}.pdf`)
 }

@@ -22,6 +22,13 @@ Von Apple nicht dokumentiert, Community-Angaben widersprüchlich (QUELLEN.md The
 Auf einem Testgerät mit aktuellem iPadOS prüfen. Bis dahin Arbeitsannahme: ja, Daten
 sind dann weg → vor dem Entfernen/Neuinstallieren immer JSON-Export.
 
+## O9: Fest hinterlegte Textbausteine im PDF
+Die rechtlichen Hinweise (Bindefrist 14 Tage, Kleinunternehmer-Hinweis nach § 19 UStG,
+Datenschutz-Satz) stehen als Text in `src/lib/quellen.ts` und sind in der Oberfläche nicht
+änderbar. Für den Regelfall passt das; sobald eine abweichende Bindefrist oder — nach
+Überschreiten der Umsatzgrenzen — der Wegfall des Kleinunternehmer-Status ansteht, muss die
+Datei angepasst werden. Ein Einstellungsbereich dafür wäre der nächste sinnvolle Ausbauschritt.
+
 ## O5: Vor erstem Kundeneinsatz von Hand gegenlesen (Egress-Sperre dieser Umgebung)
 1. Die vier HWK-Kalkulations-PDFs (Leipzig, OMV, Cottbus, Köln — URLs in QUELLEN.md T1/T3)
 2. Destatis-PM 154/2025 und 148/2026 (T2), BMF-Schreiben v. 18.03.2025 (T6)

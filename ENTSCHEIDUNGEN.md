@@ -40,6 +40,32 @@ Format: Frage / gewählte Option / Alternative / Grund / Revidierbarkeit.
 - **Grund:** REFA-Konvention (Messwerte nur mit dokumentierbarem Sondereinfluss streichen, siehe QUELLEN.md Thema 4) + Nachvollziehbarkeit vor dem Kunden: eine automatisch bereinigte Messreihe ist nicht mehr die Messung.
 - **Revidierbar:** Leicht — reine Zusatzinformation, ändert keine Kennzahl.
 
+## E8: Gestaltung ausschließlich in Schwarz, Weiß und Grau
+- **Frage:** Wie werden Zustände (ausgewählt, aktiv, Warnung) ohne Farbe unterscheidbar?
+- **Gewählt:** Kontrast statt Farbe — ausgewählte Elemente sind invertiert (weiß auf schwarz), Warnungen tragen einen kräftigen Balken links und ein fettes Schlagwort, auffällige Messwerte einen doppelten Rahmen und einen Stern mit Legende.
+- **Alternative:** Grün/Rot/Gelb für Zustände.
+- **Grund:** Vorgabe „nur schwarz und weiß". Nebeneffekt: bleibt im Schwarz-Weiß-Ausdruck und bei Farbfehlsichtigkeit eindeutig.
+- **Revidierbar:** Leicht — Farbwerte stehen zentral in `src/styles.css`.
+
+## E9: Fachbegriffe durch Alltagssprache ersetzt (Rechengrößen unverändert)
+- **Gewählt:** „Sicherheitsabschlag 20 %" statt „konservativFaktor 0,8"; „Messung speichern" statt „Runde"; „Messen/Auswerten" statt „Erfassung/Kalkulation"; „Erstmessung" statt „Baseline". Der Rechenfaktor wird daneben angezeigt und im PDF mitgedruckt.
+- **Alternative:** Fachbegriffe beibehalten.
+- **Grund:** Das Programm soll ohne Einarbeitung bedienbar sein. Der Steuerberater braucht trotzdem den Faktor — deshalb beides, nicht entweder/oder. Gerechnet wird unverändert mit dem Faktor (`faktorAusAbschlagProzent`, getestet).
+- **Revidierbar:** Leicht — reine Beschriftungen; die Umrechnung liegt in `lib/audit.ts`.
+
+## E10: Absenderangaben gehören in die Oberfläche, nicht in den Quelltext
+- **Frage:** Die für Geschäftsbriefe verpflichtenden Angaben (Name, ladungsfähige Anschrift) standen als leere Konstante im Code.
+- **Gewählt:** Eingabe im Programm (Auswertung → PDF → „Meine Angaben"), gespeichert auf dem Gerät; fehlen sie, erscheint das als offener Punkt vor dem PDF-Export.
+- **Alternative:** Weiterhin im Quelltext pflegen.
+- **Grund:** Eine Pflichtangabe, die nur mit einem Editor zu setzen ist, wird in der Praxis vergessen — und das Dokument wäre unvollständig.
+- **Revidierbar:** Leicht.
+
+## E11: Eine gemeinsame Betriebsauswahl für beide Ansichten
+- **Gewählt:** Auswahl und Verwaltung des Betriebs stehen als Leiste über beiden Ansichten.
+- **Alternative:** Bisheriger Zustand — eigene Auswahl in der Erfassung, ein zweites Auswahlfeld in der Kalkulation.
+- **Grund:** Zwei Bedienstellen für dieselbe Sache sind eine Fehlerquelle (unterschiedliche Auswahl je Ansicht). Nebeneffekt: weniger Oberfläche.
+- **Revidierbar:** Mittel.
+
 ## E5: Vitest ohne globals, Tests neben den Modulen
 - **Gewählt:** Explizite Imports (`import { describe, it, expect } from 'vitest'`), Tests als `*.test.ts` unter `src/lib/`.
 - **Alternative:** globals: true.

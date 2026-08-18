@@ -61,6 +61,19 @@ export interface StundensatzEingaben {
   produktiveStundenProJahr: number
 }
 
+/**
+ * Eigene Angaben für den Briefkopf des PDF. Auf Geschäftsbriefen sind
+ * ausgeschriebener Name und ladungsfähige Anschrift verpflichtend
+ * (QUELLEN.md, Thema 5) — deshalb sind sie im Programm einzugeben und nicht
+ * im Quelltext hinterlegt.
+ */
+export interface Absender {
+  name: string
+  strasse: string
+  ort: string
+  kontakt: string
+}
+
 /** Export-Container für JSON-Transfer iPad → Mac. */
 export interface AuditExport {
   formatVersion: 1
