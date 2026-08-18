@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Absender, Audit, Prozess, Schritt } from '../types'
 import { LEERER_ABSENDER, ladeAbsender, speichereAbsender } from '../lib/storage'
 import { berechneAudit, vergleicheAudits } from '../lib/kennzahlen'
-import { berechneStundensatz } from '../lib/stundensatz'
+import { berechneStundensatz, leseStundensatzEingaben } from '../lib/stundensatz'
 import {
   abschlagProzentAusFaktor,
   faktorAusAbschlagProzent,
@@ -68,27 +68,12 @@ function StundensatzAbschnitt({
   const [gemein, setGemein] = useState('')
   const [stunden, setStunden] = useState('')
 
-  // Alle vier Angaben müssen brauchbar sein, sonst wird nichts gerechnet.
-  const werte = {
+  const eingaben = leseStundensatzEingaben({
     bruttoJahreslohn: leseZahlNichtNegativ(brutto),
     lohnnebenkostenProzent: leseZahlNichtNegativ(lnk),
     gemeinkostenProzent: leseZahlNichtNegativ(gemein),
     produktiveStundenProJahr: leseZahlNichtNegativ(stunden),
-  }
-  const vollstaendig =
-    werte.bruttoJahreslohn !== null &&
-    werte.lohnnebenkostenProzent !== null &&
-    werte.gemeinkostenProzent !== null &&
-    werte.produktiveStundenProJahr !== null &&
-    werte.produktiveStundenProJahr > 0
-  const eingaben = vollstaendig
-    ? {
-        bruttoJahreslohn: werte.bruttoJahreslohn!,
-        lohnnebenkostenProzent: werte.lohnnebenkostenProzent!,
-        gemeinkostenProzent: werte.gemeinkostenProzent!,
-        produktiveStundenProJahr: werte.produktiveStundenProJahr!,
-      }
-    : null
+  })
   const ergebnis = eingaben ? berechneStundensatz(eingaben) : null
 
   return (
@@ -156,13 +141,13 @@ function StundensatzAbschnitt({
               onChange={(e) => setStunden(e.target.value)}
             />
           </div>
-          {ergebnis && (
+          {eingaben && ergebnis && (
             <div className="mt-4 border border-linie bg-flaeche p-3">
               <p className="zahl">
                 Personalkosten {formatiereEuro(ergebnis.personalkostenProJahr)} + Gemeinkosten{' '}
                 {formatiereEuro(ergebnis.gemeinkostenProJahr)} ={' '}
                 {formatiereEuro(ergebnis.gesamtkostenProJahr)} ÷{' '}
-                {formatiereZahl(eingaben!.produktiveStundenProJahr)} Stunden ={' '}
+                {formatiereZahl(eingaben.produktiveStundenProJahr)} Stunden ={' '}
                 <strong>{formatiereEuro(ergebnis.stundensatz)} je Stunde</strong>
               </p>
               <div className="mt-3">
@@ -173,7 +158,7 @@ function StundensatzAbschnitt({
                       ...a,
                       stundensatzIntern: Math.round(ergebnis.stundensatz * 100) / 100,
                       // Die Herleitung wird mitgespeichert, damit sie im PDF steht.
-                      stundensatzHerleitung: eingaben!,
+                      stundensatzHerleitung: eingaben,
                     }))
                   }
                 >

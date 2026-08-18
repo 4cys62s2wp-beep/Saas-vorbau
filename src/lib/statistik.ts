@@ -21,13 +21,6 @@ export function medianOderNull(werte: readonly number[]): number | null {
   return werte.length === 0 ? null : median(werte)
 }
 
-export function mittelwert(werte: readonly number[]): number {
-  if (werte.length === 0) {
-    throw new Error('mittelwert: leere Messreihe')
-  }
-  return werte.reduce((a, b) => a + b, 0) / werte.length
-}
-
 /**
  * Quantil nach Typ 7 (lineare Interpolation; Default in R und Excel).
  * Erwartet aufsteigend sortierte Werte. p in [0, 1].

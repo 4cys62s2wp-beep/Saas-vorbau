@@ -26,7 +26,7 @@ export function Abschnitt({
     <section className="border border-linie bg-papier">
       <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-linie px-4 py-3">
         {nummer !== undefined && (
-          <span className="zahl text-sm font-bold text-tinte-schwach">Schritt {nummer}</span>
+          <span className="text-sm font-bold text-tinte-schwach">Schritt {nummer}</span>
         )}
         <h2 className="text-lg font-bold">{titel}</h2>
         {aktionen && <div className="ml-auto flex gap-2">{aktionen}</div>}
@@ -39,24 +39,21 @@ export function Abschnitt({
   )
 }
 
-type KnopfArt = 'primaer' | 'sekundaer' | 'still'
+type KnopfArt = 'primaer' | 'sekundaer'
 
 const knopfKlassen: Record<KnopfArt, string> = {
   primaer: 'bg-tinte text-papier border-tinte',
   sekundaer: 'bg-papier text-tinte border-tinte',
-  still: 'bg-papier text-tinte-schwach border-linie',
 }
 
 export function Knopf({
   art = 'sekundaer',
-  breit = false,
   gross = false,
   aktiv = false,
   children,
   ...rest
 }: {
   art?: KnopfArt
-  breit?: boolean
   gross?: boolean
   aktiv?: boolean
   children: ReactNode
@@ -69,7 +66,6 @@ export function Knopf({
       className={[
         'border font-semibold',
         gross ? 'min-h-16 px-6 text-xl' : 'min-h-11 px-4 text-base',
-        breit ? 'w-full' : '',
         basis,
         // Deaktiviert: neutrale Fläche statt abgedunkeltem Schwarz — bleibt lesbar.
         'disabled:border-linie disabled:bg-flaeche disabled:text-tinte-schwach',
@@ -220,15 +216,7 @@ export function Hinweis({
  * Löschen mit Rückfrage direkt an Ort und Stelle — kein Systemdialog,
  * keine versehentliche Löschung durch einen einzelnen Fehlgriff.
  */
-export function LoeschKnopf({
-  was,
-  onLoeschen,
-  klein = false,
-}: {
-  was: string
-  onLoeschen: () => void
-  klein?: boolean
-}) {
+export function LoeschKnopf({ was, onLoeschen }: { was: string; onLoeschen: () => void }) {
   const [gefragt, setGefragt] = useState(false)
 
   if (!gefragt) {
@@ -236,9 +224,7 @@ export function LoeschKnopf({
       <button
         type="button"
         onClick={() => setGefragt(true)}
-        className={`border border-linie font-semibold text-tinte-schwach ${
-          klein ? 'min-h-11 px-3 text-sm' : 'min-h-11 px-4 text-base'
-        }`}
+        className="min-h-11 border border-linie px-4 text-base font-semibold text-tinte-schwach"
       >
         Löschen
       </button>

@@ -19,6 +19,36 @@ export interface StundensatzErgebnis {
   stundensatz: number
 }
 
+/**
+ * Prüft die vier Eingaben des Rechners und gibt sie nur vollständig zurück.
+ * Fehlt eine oder ist sie unbrauchbar, wird nicht gerechnet — eine halbe
+ * Grundlage ergibt einen falschen Stundensatz.
+ */
+export function leseStundensatzEingaben(werte: {
+  bruttoJahreslohn: number | null
+  lohnnebenkostenProzent: number | null
+  gemeinkostenProzent: number | null
+  produktiveStundenProJahr: number | null
+}): StundensatzEingaben | null {
+  const { bruttoJahreslohn, lohnnebenkostenProzent, gemeinkostenProzent, produktiveStundenProJahr } =
+    werte
+  if (
+    bruttoJahreslohn === null ||
+    lohnnebenkostenProzent === null ||
+    gemeinkostenProzent === null ||
+    produktiveStundenProJahr === null ||
+    produktiveStundenProJahr <= 0
+  ) {
+    return null
+  }
+  return {
+    bruttoJahreslohn,
+    lohnnebenkostenProzent,
+    gemeinkostenProzent,
+    produktiveStundenProJahr,
+  }
+}
+
 export function berechneStundensatz(e: StundensatzEingaben): StundensatzErgebnis {
   if (e.bruttoJahreslohn < 0) throw new Error('Stundensatz: Bruttojahreslohn darf nicht negativ sein')
   if (e.lohnnebenkostenProzent < 0) throw new Error('Stundensatz: Lohnnebenkosten dürfen nicht negativ sein')

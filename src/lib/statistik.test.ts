@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ausreisserIndizes, median, medianOderNull, mittelwert, quantilTyp7 } from './statistik'
+import { ausreisserIndizes, median, medianOderNull, quantilTyp7 } from './statistik'
 
 describe('median', () => {
   it('ungerade Anzahl: mittlerer Wert', () => {
@@ -15,9 +15,12 @@ describe('median', () => {
   })
 
   it('robust gegen einen extremen Ausreißer (Kernargument fürs Tool)', () => {
-    // Mittelwert würde 226,4 liefern — der Median bleibt bei der typischen Dauer.
-    expect(median([110, 118, 112, 120, 672])).toBe(118)
-    expect(mittelwert([110, 118, 112, 120, 672])).toBeCloseTo(226.4)
+    const werte = [110, 118, 112, 120, 672]
+    const durchschnitt = werte.reduce((a, b) => a + b, 0) / werte.length
+    // Der Durchschnitt läge bei 226,4 s — eine Dauer, die so nie gemessen wurde.
+    expect(durchschnitt).toBeCloseTo(226.4)
+    // Der Median bleibt bei der typischen Dauer.
+    expect(median(werte)).toBe(118)
   })
 
   it('leere Messreihe wirft einen klaren Fehler', () => {

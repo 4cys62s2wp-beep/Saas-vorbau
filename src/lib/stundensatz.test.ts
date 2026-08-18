@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { berechneStundensatz } from './stundensatz'
+import { berechneStundensatz, leseStundensatzEingaben } from './stundensatz'
 
 describe('berechneStundensatz', () => {
   it('durchgerechnetes Beispiel (Schema aus QUELLEN.md)', () => {
@@ -37,5 +37,33 @@ describe('berechneStundensatz', () => {
     expect(() => berechneStundensatz({ ...basis, lohnnebenkostenProzent: -1 })).toThrow()
     expect(() => berechneStundensatz({ ...basis, gemeinkostenProzent: -1 })).toThrow()
     expect(() => berechneStundensatz({ ...basis, produktiveStundenProJahr: 0 })).toThrow(/> 0/)
+  })
+})
+
+describe('leseStundensatzEingaben', () => {
+  const vollstaendig = {
+    bruttoJahreslohn: 45_000,
+    lohnnebenkostenProzent: 24,
+    gemeinkostenProzent: 40,
+    produktiveStundenProJahr: 1_455,
+  }
+
+  it('gibt vollständige Eingaben zurück', () => {
+    expect(leseStundensatzEingaben(vollstaendig)).toEqual(vollstaendig)
+  })
+
+  it('rechnet nicht mit halber Grundlage', () => {
+    for (const feld of Object.keys(vollstaendig) as (keyof typeof vollstaendig)[]) {
+      expect(leseStundensatzEingaben({ ...vollstaendig, [feld]: null })).toBeNull()
+    }
+  })
+
+  it('null produktive Stunden ergeben keine Rechnung (Division durch null)', () => {
+    expect(leseStundensatzEingaben({ ...vollstaendig, produktiveStundenProJahr: 0 })).toBeNull()
+  })
+
+  it('lässt Nullwerte bei Zuschlägen zu', () => {
+    const ohneZuschlaege = { ...vollstaendig, lohnnebenkostenProzent: 0, gemeinkostenProzent: 0 }
+    expect(leseStundensatzEingaben(ohneZuschlaege)).toEqual(ohneZuschlaege)
   })
 })
