@@ -115,6 +115,27 @@ await messAbschnitt.getByRole('button', { name: 'Start' }).click()
 await seite.waitForTimeout(300)
 await messAbschnitt.getByRole('button', { name: 'Messung speichern und anhalten' }).click()
 
+// -------------------------------- Uhr gehört zum gewählten Arbeitsschritt
+await schrittAbschnitt.getByPlaceholder('z. B. Aufmaß ins Angebot übertragen').fill('Zweiter Schritt')
+await schrittAbschnitt.getByRole('button', { name: 'Hinzufügen' }).click()
+await schrittAbschnitt.getByRole('button', { name: /Aufmaß übertragen/ }).click()
+await messAbschnitt.getByRole('button', { name: 'Start' }).click()
+await seite.waitForTimeout(300)
+await schrittAbschnitt.getByRole('button', { name: /Zweiter Schritt/ }).click()
+pruefe(
+  (await messAbschnitt.getByRole('button', { name: 'Start' }).count()) === 1,
+  'Wechsel des Arbeitsschritts bricht eine laufende Messung ab',
+)
+pruefe(
+  (await schrittAbschnitt.getByRole('button', { name: /Zweiter Schritt.*noch nicht gemessen/ }).count()) === 1,
+  'die Zeit wird nicht dem falschen Arbeitsschritt zugeschlagen',
+)
+await schrittAbschnitt.getByRole('button', { name: /Zweiter Schritt/ }).click()
+await schrittAbschnitt.getByLabel('Name ändern').fill('Zweiter Schritt')
+await schrittAbschnitt.getByRole('button', { name: 'Löschen' }).click()
+await schrittAbschnitt.getByRole('button', { name: 'Ja, löschen' }).click()
+await schrittAbschnitt.getByRole('button', { name: /Aufmaß übertragen/ }).click()
+
 // ------------------------------------------------------------ Umbenennen
 await schrittAbschnitt.getByLabel('Name ändern').fill('Aufmaß ins Angebot übertragen')
 pruefe(

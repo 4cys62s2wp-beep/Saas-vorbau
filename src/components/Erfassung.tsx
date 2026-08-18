@@ -310,9 +310,15 @@ function MessAbschnitt({
     <Abschnitt
       nummer={3}
       titel={`Zeit messen: „${anzeigeName(schritt.name)}“`}
-      hinweis="Den Arbeitsschritt mehrmals messen. Gewertet wird später der mittlere Wert (Median) — einzelne Ausreißer verfälschen das Ergebnis dadurch nicht."
+      hinweis="Den Arbeitsschritt mehrmals messen. Gewertet wird später der mittlere Wert (Median) — einzelne Ausreißer verfälschen das Ergebnis dadurch nicht. Ein Wechsel zu einem anderen Arbeitsschritt bricht eine laufende Messung ab."
     >
-      <Stoppuhr onMessung={(sek) => setzeMessungen((alt) => [...alt, sek])} />
+      {/*
+        Der Schlüssel setzt die Uhr zurück, sobald ein anderer Arbeitsschritt
+        gewählt wird. Ohne ihn liefe eine gestartete Messung weiter und würde
+        beim Speichern dem neuen Schritt zugeschlagen — eine falsche Zahl, die
+        niemandem auffällt, weil sie plausibel aussieht.
+      */}
+      <Stoppuhr key={schritt.id} onMessung={(sek) => setzeMessungen((alt) => [...alt, sek])} />
 
       <div className="mt-4">
         {fehlend > 0 ? (
