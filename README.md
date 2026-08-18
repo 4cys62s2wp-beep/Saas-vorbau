@@ -88,7 +88,7 @@ vom iPad zum Rechner.
 ## Prüfen
 
 ```bash
-npm run test:run   # 59 Tests der Rechenlogik
+npm run test:run   # 62 Tests der Rechenlogik und des PDF
 npm run preview    # in einem zweiten Fenster:
 node scripts/smoke.mjs   # kompletter Ablauf im Browser bis zum PDF
 ```

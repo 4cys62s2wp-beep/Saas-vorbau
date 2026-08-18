@@ -3,7 +3,7 @@
 **In einem Satz:** Das Programm ist fertig, umgestellt auf eine schlichte
 Schwarz-Weiß-Oberfläche und um die fehlenden Grundfunktionen ergänzt
 (Löschen, Umbenennen, Nachmessung, eigene Absenderangaben). Alles ist geprüft:
-59 Tests der Rechenlogik und 29 Prüfungen im echten Browser laufen durch,
+62 Tests der Rechenlogik und 29 Prüfungen im echten Browser laufen durch,
 einschließlich PDF-Erstellung.
 
 ## Was du als Erstes tun solltest
@@ -16,7 +16,7 @@ einschließlich PDF-Erstellung.
    abrufbar waren).
 
 ## Fertig — alles hier ausgeführt, nicht nur geschrieben
-**Geprüft:** `tsc` ohne Beanstandung · 59 Tests grün · `vite build` inklusive
+**Geprüft:** `tsc` ohne Beanstandung · 62 Tests grün · `vite build` inklusive
 Offline-Fähigkeit · 29 Browser-Prüfungen grün (Betrieb anlegen, messen,
 umbenennen, löschen, Neustart übersteht die Daten, Stundensatz rechnen,
 bewerten, Abschlag, PDF mit gültiger Signatur, Sicherungsdatei, Nachmessung,
@@ -29,7 +29,7 @@ Vergleich).
   `AuditLeiste.tsx`, `Erfassung.tsx`, `Stoppuhr.tsx`, `Kalkulation.tsx`, `App.tsx`
 - **PDF:** `lib/pdf.ts` — Messwerte, vollständiger Rechenweg,
   Stundensatz-Herleitung, Preisrahmen, Vergleich, Quellenanhang ab neuer Seite
-- **Tests:** sechs Dateien mit 59 Tests, `scripts/smoke.mjs` mit 29 Prüfungen
+- **Tests:** sieben Dateien mit 62 Tests, `scripts/smoke.mjs` mit 29 Prüfungen
 - **Unterlagen:** QUELLEN.md (11 Themen), README.md, ENTSCHEIDUNGEN.md (E1–E11),
   OPEN.md (O1–O9), RUNME.sh
 
