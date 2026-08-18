@@ -9,13 +9,30 @@ laufen durch; abgedeckt ist der vollständige Methodenzyklus vom Messen über
 das Angebot bis zum Nachweis-PDF nach der Nachmessung.
 
 ## Was du als Erstes tun solltest
-1. `./RUNME.sh` laufen lassen (installieren, prüfen, testen, bauen).
-2. Im Programm unter **Auswerten → PDF → Meine Angaben** Namen und Anschrift
-   eintragen — Pflichtangabe auf Geschäftsbriefen. Fehlt sie, meldet das
-   Programm es vor jedem PDF.
-3. QUELLEN.md lesen; vor dem ersten echten Angebot die Liste in OPEN.md O5
-   abarbeiten (rund zehn Klicks auf die Quellen, die hier nicht direkt
-   abrufbar waren).
+
+```bash
+git fetch origin
+git checkout claude/audit-tool-research-phase-wh2r5z
+./RUNME.sh          # installiert, prüft, testet, baut — dauert ein bis zwei Minuten
+npm run dev         # startet das Programm, Adresse steht im Terminal
+```
+
+1. **Absenderangaben eintragen** — im Programm unter **Auswerten → PDF →
+   Meine Angaben**: ausgeschriebener Vor- und Nachname, Straße, PLZ und Ort,
+   Telefon und E-Mail. Pflichtangabe auf Geschäftsbriefen; fehlt sie, meldet
+   das Programm es vor jedem PDF. Wird auf dem Gerät gespeichert, also einmalig.
+2. **Einmal durchspielen** — Betrieb anlegen, Prozess, zwei Arbeitsschritte,
+   je fünf Messungen, dann auswerten und ein PDF erzeugen. So siehst du in
+   fünf Minuten, ob dir an der Bedienung etwas fehlt.
+3. **QUELLEN.md lesen** und vor dem ersten echten Angebot die Liste in
+   OPEN.md O5 abarbeiten (rund zehn Klicks auf die Quellen, die aus dieser
+   Umgebung nicht direkt abrufbar waren).
+
+Fürs iPad: `npm run build`, dann `npm run preview -- --host`. Die angezeigte
+Adresse (`http://192.168.…`) am iPad in Safari öffnen und über *Teilen → Zum
+Home-Bildschirm* ablegen. Erst als Home-Bildschirm-App läuft es offline und
+ist von der Sieben-Tage-Löschung ausgenommen (QUELLEN.md, Thema 9). Der Mac
+muss dafür laufen und im selben WLAN sein.
 
 ## Gefundene und behobene Fehler (letzter Durchgang)
 1. **Stundensatz konnte hundertfach zu hoch werden.** „52.84“ mit Punkt
