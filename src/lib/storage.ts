@@ -58,7 +58,26 @@ export async function merkeExport(zeitpunktIso: string): Promise<void> {
   await set(LETZTER_EXPORT_KEY, zeitpunktIso)
 }
 
+/**
+ * Erzeugt eine Kennung für Betrieb, Prozess und Arbeitsschritt.
+ *
+ * Achtung: `crypto.randomUUID` steht nur in sicheren Kontexten zur Verfügung
+ * (https oder localhost). Wird die Anwendung vom iPad über die lokale
+ * IP-Adresse geöffnet — also über http —, fehlt die Funktion, und ohne
+ * Rückfallweg ließe sich dort nichts anlegen. Deshalb die Abstufung.
+ */
 export function neueId(): string {
-  // crypto.randomUUID gibt es in allen Ziel-Browsern (Safari 15.4+, Chrome 92+)
-  return crypto.randomUUID()
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = crypto.getRandomValues(new Uint8Array(16))
+    // Kennzeichnung als Zufalls-UUID (Version 4, Variante 1), wie es die Norm vorsieht.
+    bytes[6] = (bytes[6]! & 0x0f) | 0x40
+    bytes[8] = (bytes[8]! & 0x3f) | 0x80
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+  }
+  // Letzter Rückfallweg: reicht für ein Werkzeug mit einem einzigen Benutzer.
+  return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
 }

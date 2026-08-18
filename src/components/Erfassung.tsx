@@ -3,7 +3,7 @@ import type { Audit, Prozess, Schritt } from '../types'
 import { neueId } from '../lib/storage'
 import { ausreisserIndizes } from '../lib/statistik'
 import { MIN_MESSUNGEN_WARNSCHWELLE } from '../lib/konstanten'
-import { formatiereSekunden, mehrzahl } from '../lib/format'
+import { anzeigeName, formatiereSekunden, mehrzahl } from '../lib/format'
 import { Stoppuhr, formatiereStoppuhr } from './Stoppuhr'
 import { leseZahlNichtNegativ } from '../lib/zahlen'
 import { Abschnitt, Feld, Hinweis, Knopf, ListenKnopf, LoeschKnopf, ZahlFeld } from './ui'
@@ -131,7 +131,7 @@ function ProzessAbschnitt({
           <ListenKnopf
             key={p.id}
             aktiv={p.id === prozess?.id}
-            titel={p.name}
+            titel={anzeigeName(p.name)}
             zusatz={`${p.haeufigkeitProMonat.toLocaleString('de-DE')}× im Monat · ${mehrzahl(p.schritte.length, 'Arbeitsschritt', 'Arbeitsschritte')}`}
             onClick={() => waehle(p.id)}
           />
@@ -186,7 +186,7 @@ function ProzessAbschnitt({
                 setzeProzess(prozess.id, (p) => ({ ...p, haeufigkeitProMonat: v ?? 0 }))
               }
             />
-            <LoeschKnopf was={`Prozess „${prozess.name}“`} onLoeschen={() => loeschen(prozess.id)} />
+            <LoeschKnopf was={`Prozess „${anzeigeName(prozess.name)}“`} onLoeschen={() => loeschen(prozess.id)} />
           </div>
         </div>
       )}
@@ -232,7 +232,7 @@ function SchrittAbschnitt({
   return (
     <Abschnitt
       nummer={2}
-      titel={`Arbeitsschritte in „${prozess.name}“`}
+      titel={`Arbeitsschritte in „${anzeigeName(prozess.name)}“`}
       hinweis="Den Prozess in einzelne Handgriffe zerlegen. Je feiner, desto genauer lässt sich später sagen, welcher Teil sich automatisieren lässt."
     >
       <div className="flex flex-col gap-2">
@@ -242,7 +242,7 @@ function SchrittAbschnitt({
             <ListenKnopf
               key={s.id}
               aktiv={s.id === schritt?.id}
-              titel={s.name}
+              titel={anzeigeName(s.name)}
               zusatz={
                 s.messungenSek.length === 0
                   ? 'noch nicht gemessen'
@@ -281,7 +281,7 @@ function SchrittAbschnitt({
             }
           />
           <LoeschKnopf
-            was={`Arbeitsschritt „${schritt.name}“ mit allen Zeiten`}
+            was={`Arbeitsschritt „${anzeigeName(schritt.name)}“ mit allen Zeiten`}
             onLoeschen={() => loeschen(schritt.id)}
           />
         </div>
@@ -309,7 +309,7 @@ function MessAbschnitt({
   return (
     <Abschnitt
       nummer={3}
-      titel={`Zeit messen: „${schritt.name}“`}
+      titel={`Zeit messen: „${anzeigeName(schritt.name)}“`}
       hinweis="Den Arbeitsschritt mehrmals messen. Gewertet wird später der mittlere Wert (Median) — einzelne Ausreißer verfälschen das Ergebnis dadurch nicht."
     >
       <Stoppuhr onMessung={(sek) => setzeMessungen((alt) => [...alt, sek])} />

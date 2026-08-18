@@ -45,6 +45,7 @@ export interface ProzessKennzahlen {
   sollMinutenProMonat: number
   ersparnisMinutenProMonat: number
   schritte: SchrittKennzahlen[]
+  warnungen: string[]
 }
 
 export interface Preisband {
@@ -135,6 +136,12 @@ export function berechneProzess(
   const summe = (f: (s: SchrittKennzahlen) => number) => schritte.reduce((a, s) => a + f(s), 0)
   const ist = summe((s) => s.istMinutenProMonat)
   const soll = summe((s) => s.sollMinutenProMonat)
+  const warnungen: string[] = []
+  if (p.haeufigkeitProMonat === 0 && p.schritte.length > 0) {
+    warnungen.push(
+      `Prozess "${p.name}": Häufigkeit steht auf 0 — er fließt mit keiner Minute in die Rechnung ein.`,
+    )
+  }
   return {
     prozessId: p.id,
     name: p.name,
@@ -143,6 +150,7 @@ export function berechneProzess(
     sollMinutenProMonat: soll,
     ersparnisMinutenProMonat: ist - soll,
     schritte,
+    warnungen,
   }
 }
 
@@ -167,7 +175,10 @@ export function berechneAudit(
   const vorAbschlag = ersparnisStundenProJahr * audit.stundensatzIntern
   const nachAbschlag = vorAbschlag * audit.konservativFaktor
 
-  const warnungen = prozesse.flatMap((p) => p.schritte.flatMap((s) => s.warnungen))
+  const warnungen = prozesse.flatMap((p) => [
+    ...p.warnungen,
+    ...p.schritte.flatMap((s) => s.warnungen),
+  ])
   if (nachAbschlag <= 0) {
     warnungen.push(
       'Ersparnis ≤ 0 — es gibt nichts zu verkaufen. Prüfen: Sind Schritte als automatisierbar markiert? Restaufwand < 100 %?',

@@ -18,9 +18,20 @@ export function useAudits() {
 
   useEffect(() => {
     let aktiv = true
-    void ladeAudits().then((a) => {
-      if (aktiv) setAuditsIntern(a)
-    })
+    ladeAudits().then(
+      (a) => {
+        if (aktiv) setAuditsIntern(a)
+      },
+      (fehler: unknown) => {
+        // Ohne diesen Zweig bliebe die Anwendung dauerhaft im Ladezustand
+        // stehen, wenn der Gerätespeicher nicht zugänglich ist.
+        if (!aktiv) return
+        setAuditsIntern([])
+        setSpeicherFehler(
+          `Gespeicherte Daten konnten nicht gelesen werden (${fehler instanceof Error ? fehler.message : String(fehler)}). Vorhandene Messungen bitte über „Daten einlesen“ aus einer Sicherungsdatei holen.`,
+        )
+      },
+    )
     void persistentSpeicherAnfordern()
     return () => {
       aktiv = false

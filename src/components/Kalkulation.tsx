@@ -11,6 +11,7 @@ import {
 } from '../lib/audit'
 import { KONSERVATIV_BEGRUENDUNGEN } from '../lib/quellen'
 import {
+  anzeigeName,
   formatiereEuro,
   formatiereMinuten,
   formatiereProzent,
@@ -224,7 +225,7 @@ function BewertungsAbschnitt({
         return (
           <div key={pk.prozessId} className="mb-6 last:mb-0">
             <h3 className="font-bold">
-              {pk.name}{' '}
+              {anzeigeName(pk.name)}{' '}
               <span className="zahl font-normal text-tinte-schwach">
                 — {formatiereZahl(pk.haeufigkeitProMonat, pk.haeufigkeitProMonat % 1 === 0 ? 0 : 1)}× im
                 Monat
@@ -255,7 +256,7 @@ function BewertungsAbschnitt({
                     if (!schritt) return null
                     return (
                       <tr key={sk.schrittId} className="border-b border-linie align-middle">
-                        <td className="py-2 pr-3 font-semibold">{sk.name}</td>
+                        <td className="py-2 pr-3 font-semibold">{anzeigeName(sk.name)}</td>
                         <td className="zahl py-2 pr-3">
                           {sk.anzahlMessungen}
                           {sk.warnungen.length > 0 && <strong> *</strong>}

@@ -149,7 +149,12 @@ export function AuditLeiste({
               type="date"
               value={audit.datum}
               breite="w-52"
-              onChange={(e) => aktualisiereAudit(audit.id, (a) => ({ ...a, datum: e.target.value }))}
+              onChange={(e) => {
+                // Ein leeres Datum würde im PDF und in der Auswahlliste eine
+                // Lücke hinterlassen — dann lieber das bisherige behalten.
+                if (e.target.value === '') return
+                aktualisiereAudit(audit.id, (a) => ({ ...a, datum: e.target.value }))
+              }}
             />
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">

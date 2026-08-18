@@ -106,6 +106,16 @@ describe('berechneProzess', () => {
     expect(k.ersparnisMinutenProMonat).toBeCloseTo(15)
   })
 
+  it('warnt, wenn ein Prozess mit Schritten die Häufigkeit 0 hat', () => {
+    const k = berechneProzess(
+      prozess({ haeufigkeitProMonat: 0, schritte: [schritt({})] }),
+    )
+    expect(k.istMinutenProMonat).toBe(0)
+    expect(k.warnungen.join(' ')).toContain('Häufigkeit steht auf 0')
+    // Ohne Schritte gibt es nichts zu warnen.
+    expect(berechneProzess(prozess({ haeufigkeitProMonat: 0 })).warnungen).toEqual([])
+  })
+
   it('validiert die Häufigkeit', () => {
     expect(() => berechneProzess(prozess({ haeufigkeitProMonat: -1 }))).toThrow(/endlicher Wert/)
   })

@@ -2,6 +2,7 @@ import type { Content, TDocumentDefinitions, TableCell } from 'pdfmake/interface
 import type { Absender, Audit } from '../types'
 import { berechneAudit, vergleicheAudits, type AuditVergleich } from './kennzahlen'
 import {
+  anzeigeName,
   formatiereDatum,
   formatiereEuro,
   formatiereMinuten,
@@ -66,10 +67,19 @@ export function erzeugeAuditPdfDefinition(
   // ── Messwerte und Schritte je Prozess ───────────────────────────────────
   for (const pk of k.prozesse) {
     inhalt.push({
-      text: `Prozess: ${pk.name} — ${formatiereZahl(pk.haeufigkeitProMonat, pk.haeufigkeitProMonat % 1 === 0 ? 0 : 1)}× pro Monat`,
+      text: `Prozess: ${anzeigeName(pk.name)} — ${formatiereZahl(pk.haeufigkeitProMonat, pk.haeufigkeitProMonat % 1 === 0 ? 0 : 1)}× pro Monat`,
       style: 'h2',
       margin: [0, 8, 0, 4],
     })
+
+    if (pk.schritte.length === 0) {
+      inhalt.push({
+        text: 'Für diesen Prozess wurde kein Arbeitsschritt erfasst.',
+        style: 'klein',
+        margin: [0, 0, 0, 6],
+      })
+      continue
+    }
 
     const zeilen: TableCell[][] = [
       [
@@ -89,7 +99,7 @@ export function erzeugeAuditPdfDefinition(
     for (const sk of pk.schritte) {
       const schritt = prozess?.schritte.find((s) => s.id === sk.schrittId)
       zeilen.push([
-        sk.name,
+        anzeigeName(sk.name),
         {
           text: schritt ? schritt.messungenSek.map((m) => formatiereZahl(m, m % 1 === 0 ? 0 : 1)).join('; ') : '—',
           style: 'klein',

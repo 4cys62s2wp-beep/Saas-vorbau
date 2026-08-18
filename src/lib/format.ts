@@ -50,6 +50,15 @@ export function mehrzahl(anzahl: number, einzahl: string, mehrzahlForm: string):
   return `${formatiereZahl(anzahl)} ${anzahl === 1 ? einzahl : mehrzahlForm}`
 }
 
+/**
+ * Namen, die versehentlich leer geblieben sind, bekommen für die Anzeige einen
+ * Platzhalter — ein leerer Listeneintrag oder eine leere Tabellenzeile im
+ * Kundendokument wirkt wie ein Fehler.
+ */
+export function anzeigeName(name: string): string {
+  return name.trim() === '' ? '(ohne Namen)' : name.trim()
+}
+
 /** ISO-Datum (JJJJ-MM-TT) → TT.MM.JJJJ für Briefe/PDF. */
 export function formatiereDatum(iso: string): string {
   const teile = iso.slice(0, 10).split('-')
