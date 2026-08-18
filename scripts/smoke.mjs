@@ -318,6 +318,21 @@ pruefe(
   'Vergleich beider Messungen erscheint',
 )
 
+// Der Nachweis nach sechs Wochen: PDF aus der Nachmessung, mit Vergleichsteil.
+await abschnitt('Interner Stundensatz').getByLabel('Stundensatz (Euro je Stunde)').fill('53,69')
+await seite.waitForTimeout(150)
+const [nachweis] = await Promise.all([
+  seite.waitForEvent('download', { timeout: 30000 }),
+  abschnitt('PDF für den Kunden').getByRole('button', { name: 'PDF erstellen' }).click(),
+])
+const nachweisPfad = await nachweis.path()
+pruefe(!!nachweisPfad, 'PDF zur Nachmessung wird erzeugt')
+if (nachweisPfad) {
+  const { readFileSync } = await import('node:fs')
+  const roh = readFileSync(nachweisPfad)
+  pruefe(roh.subarray(0, 5).toString('latin1') === '%PDF-', 'auch dieses PDF ist gültig')
+}
+
 await browser.close()
 console.log(
   fehler.length === 0

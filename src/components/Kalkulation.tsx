@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Absender, Audit, Prozess, Schritt } from '../types'
 import { LEERER_ABSENDER, ladeAbsender, speichereAbsender } from '../lib/storage'
-import { berechneAudit, vergleicheAudits } from '../lib/kennzahlen'
+import { berechneAudit, vergleicheAudits, type ProzessKennzahlen } from '../lib/kennzahlen'
 import { berechneStundensatz, leseStundensatzEingaben } from '../lib/stundensatz'
 import {
   abschlagProzentAusFaktor,
@@ -209,111 +209,18 @@ function BewertungsAbschnitt({
         const prozess = audit.prozesse.find((p) => p.id === pk.prozessId)
         if (!prozess) return null
         return (
-          <div key={pk.prozessId} className="mb-6 last:mb-0">
-            <h3 className="font-bold">
-              {anzeigeName(pk.name)}{' '}
-              <span className="zahl font-normal text-tinte-schwach">
-                — {formatiereZahl(pk.haeufigkeitProMonat, pk.haeufigkeitProMonat % 1 === 0 ? 0 : 1)}× im
-                Monat
-              </span>
-            </h3>
-            {pk.schritte.length > 0 && (
-              <p className="zahl text-sm text-tinte-schwach">
-                Ein Durchlauf dauert heute {formatiereDauer(pk.istMinutenProDurchlauf)}, nach der
-                Automatisierung {formatiereDauer(pk.sollMinutenProDurchlauf)}.
-              </p>
-            )}
-            {pk.schritte.length === 0 ? (
-              <p className="mt-1 text-tinte-schwach">
-                Für diesen Prozess ist noch kein Arbeitsschritt erfasst.
-              </p>
-            ) : (
-            <div className="mt-2 overflow-x-auto">
-              <table className="w-full min-w-[820px] border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b-2 border-tinte">
-                    <th className="py-2 pr-3">Arbeitsschritt</th>
-                    <th className="py-2 pr-3">Messungen</th>
-                    <th className="py-2 pr-3">Mittlere Dauer</th>
-                    <th className="py-2 pr-3">Heute</th>
-                    <th className="py-2 pr-3">Automatisierbar</th>
-                    <th className="py-2 pr-3">Rest danach</th>
-                    <th className="py-2 pr-3">Künftig</th>
-                    <th className="py-2">Ersparnis</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pk.schritte.map((sk) => {
-                    const schritt = prozess.schritte.find((s) => s.id === sk.schrittId)
-                    if (!schritt) return null
-                    return (
-                      <tr key={sk.schrittId} className="border-b border-linie align-middle">
-                        <td className="py-2 pr-3 font-semibold">{anzeigeName(sk.name)}</td>
-                        <td className="zahl py-2 pr-3">
-                          {sk.anzahlMessungen}
-                          {sk.warnungen.length > 0 && <strong> *</strong>}
-                        </td>
-                        <td className="zahl py-2 pr-3">
-                          {sk.medianSek === null ? '—' : formatiereSekunden(sk.medianSek)}
-                        </td>
-                        <td className="zahl py-2 pr-3">{formatiereMinuten(sk.istMinutenProMonat)}</td>
-                        <td className="py-2 pr-3">
-                          <Knopf
-                            aria-label={`${sk.name}: automatisierbar ${
-                              schritt.automatisierbar ? 'ja' : 'nein'
-                            }`}
-                            aktiv={schritt.automatisierbar}
-                            onClick={() =>
-                              setzeSchritt(pk.prozessId, sk.schrittId, (s) => ({
-                                ...s,
-                                automatisierbar: !s.automatisierbar,
-                              }))
-                            }
-                          >
-                            {schritt.automatisierbar ? 'Ja' : 'Nein'}
-                          </Knopf>
-                        </td>
-                        <td className="py-2 pr-3">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="range"
-                              min={0}
-                              max={100}
-                              step={5}
-                              aria-label={`Restaufwand für ${sk.name}`}
-                              disabled={!schritt.automatisierbar}
-                              value={schritt.restaufwandProzent}
-                              onChange={(e) =>
-                                setzeSchritt(pk.prozessId, sk.schrittId, (s) => ({
-                                  ...s,
-                                  restaufwandProzent: Number(e.target.value),
-                                }))
-                              }
-                            />
-                            <span className="zahl w-14">
-                              {schritt.automatisierbar
-                                ? formatiereProzent(schritt.restaufwandProzent)
-                                : '—'}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="zahl py-2 pr-3">{formatiereMinuten(sk.sollMinutenProMonat)}</td>
-                        <td className="zahl py-2 font-bold">
-                          {formatiereMinuten(sk.ersparnisMinutenProMonat)}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-            )}
-          </div>
+          <ProzessTabelle
+            key={pk.prozessId}
+            kennzahlen={pk}
+            prozess={prozess}
+            setzeSchritt={setzeSchritt}
+          />
         )
       })}
 
       <p className="text-sm text-tinte-schwach">
-        Angaben „Heute“, „Künftig“ und „Ersparnis“ in Minuten pro Monat.
+        Angaben „Heute“, „Künftig“ und „Ersparnis“ in Minuten pro Monat. Ein Stern hinter der
+        Anzahl der Messungen verweist auf die Hinweise unter der Tabelle.
       </p>
 
       {kennzahlen.warnungen.length > 0 && (
@@ -326,6 +233,123 @@ function BewertungsAbschnitt({
         </div>
       )}
     </Abschnitt>
+  )
+}
+
+/** Ein Prozess mit seinen Arbeitsschritten in der Bewertungstabelle. */
+function ProzessTabelle({
+  kennzahlen,
+  prozess,
+  setzeSchritt,
+}: {
+  kennzahlen: ProzessKennzahlen
+  prozess: Prozess
+  setzeSchritt: (pId: string, sId: string, f: (s: Schritt) => Schritt) => void
+}) {
+  const haeufigkeit = formatiereZahl(
+    kennzahlen.haeufigkeitProMonat,
+    kennzahlen.haeufigkeitProMonat % 1 === 0 ? 0 : 1,
+  )
+
+  return (
+    <div className="mb-6 last:mb-0">
+      <h3 className="font-bold">
+        {anzeigeName(kennzahlen.name)}{' '}
+        <span className="zahl font-normal text-tinte-schwach">— {haeufigkeit}× im Monat</span>
+      </h3>
+
+      {kennzahlen.schritte.length === 0 ? (
+        <p className="mt-1 text-tinte-schwach">
+          Für diesen Prozess ist noch kein Arbeitsschritt erfasst.
+        </p>
+      ) : (
+        <>
+          <p className="zahl text-sm text-tinte-schwach">
+            Ein Durchlauf dauert heute {formatiereDauer(kennzahlen.istMinutenProDurchlauf)}, nach der
+            Automatisierung {formatiereDauer(kennzahlen.sollMinutenProDurchlauf)}.
+          </p>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b-2 border-tinte">
+                  <th className="py-2 pr-3">Arbeitsschritt</th>
+                  <th className="py-2 pr-3">Messungen</th>
+                  <th className="py-2 pr-3">Mittlere Dauer</th>
+                  <th className="py-2 pr-3">Heute</th>
+                  <th className="py-2 pr-3">Automatisierbar</th>
+                  <th className="py-2 pr-3">Rest danach</th>
+                  <th className="py-2 pr-3">Künftig</th>
+                  <th className="py-2">Ersparnis</th>
+                </tr>
+              </thead>
+              <tbody>
+                {kennzahlen.schritte.map((sk) => {
+                  const schritt = prozess.schritte.find((s) => s.id === sk.schrittId)
+                  if (!schritt) return null
+                  return (
+                    <tr key={sk.schrittId} className="border-b border-linie align-middle">
+                      <td className="py-2 pr-3 font-semibold">{anzeigeName(sk.name)}</td>
+                      <td className="zahl py-2 pr-3">
+                        {sk.anzahlMessungen}
+                        {sk.warnungen.length > 0 && <strong> *</strong>}
+                      </td>
+                      <td className="zahl py-2 pr-3">
+                        {sk.medianSek === null ? '—' : formatiereSekunden(sk.medianSek)}
+                      </td>
+                      <td className="zahl py-2 pr-3">{formatiereMinuten(sk.istMinutenProMonat)}</td>
+                      <td className="py-2 pr-3">
+                        <Knopf
+                          aria-label={`${sk.name}: automatisierbar ${
+                            schritt.automatisierbar ? 'ja' : 'nein'
+                          }`}
+                          aktiv={schritt.automatisierbar}
+                          onClick={() =>
+                            setzeSchritt(prozess.id, sk.schrittId, (s) => ({
+                              ...s,
+                              automatisierbar: !s.automatisierbar,
+                            }))
+                          }
+                        >
+                          {schritt.automatisierbar ? 'Ja' : 'Nein'}
+                        </Knopf>
+                      </td>
+                      <td className="py-2 pr-3">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            step={5}
+                            aria-label={`Restaufwand für ${sk.name}`}
+                            disabled={!schritt.automatisierbar}
+                            value={schritt.restaufwandProzent}
+                            onChange={(e) =>
+                              setzeSchritt(prozess.id, sk.schrittId, (s) => ({
+                                ...s,
+                                restaufwandProzent: Number(e.target.value),
+                              }))
+                            }
+                          />
+                          <span className="zahl w-14">
+                            {schritt.automatisierbar
+                              ? formatiereProzent(schritt.restaufwandProzent)
+                              : '—'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="zahl py-2 pr-3">{formatiereMinuten(sk.sollMinutenProMonat)}</td>
+                      <td className="zahl py-2 font-bold">
+                        {formatiereMinuten(sk.ersparnisMinutenProMonat)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
