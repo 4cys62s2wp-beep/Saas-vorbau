@@ -17,11 +17,5 @@
  */
 export const MIN_MESSUNGEN_WARNSCHWELLE = 5
 
-/**
- * Ab dieser Messanzahl gilt eine Reihe als statistisch abgesichert
- * (Organisationshandbuch des Bundes: mindestens 30 Messungen; QUELLEN.md Thema 4).
- */
-export const MESSUNGEN_STATISTISCH_ABGESICHERT = 30
-
 /** Preisband als Anteile der konservativen Jahresersparnis (Auftrag: 10/15/20 %). */
 export const PREISBAND_ANTEILE = [0.10, 0.15, 0.20] as const

@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 
 /**
- * Stoppuhr für die Vor-Ort-Messung. Jede Runde (Lap) = eine Messung.
- * „Stopp" schreibt die laufende Runde ebenfalls als Messung.
- * „Verwerfen" beendet ohne die laufende Runde zu speichern.
- * Auflösung: 0,1 s (mehr gibt die Handmessung nicht her).
+ * Stoppuhr für die Messung vor Ort.
+ *
+ * Jede gespeicherte Zeit ist eine Messung. Während der Messreihe läuft die Uhr
+ * durch: "Messung speichern" schreibt die aktuelle Zeit weg und startet sofort
+ * die nächste — so lassen sich mehrere Durchläufe hintereinander aufnehmen,
+ * ohne die Uhr neu zu starten.
+ *
+ * Auflösung: Zehntelsekunden. Mehr gibt eine Messung per Hand nicht her.
  */
 interface StoppuhrProps {
   onMessung: (sekunden: number) => void
@@ -20,61 +24,64 @@ export function formatiereStoppuhr(sekunden: number): string {
 export function Stoppuhr({ onMessung }: StoppuhrProps) {
   const [laeuft, setLaeuft] = useState(false)
   const [anzeigeSek, setAnzeigeSek] = useState(0)
-  const [rundenDieseSitzung, setRundenDieseSitzung] = useState(0)
-  const rundenStart = useRef(0)
+  const [gespeichert, setGespeichert] = useState(0)
+  const start = useRef(0)
 
   useEffect(() => {
     if (!laeuft) return
     const timer = setInterval(() => {
-      setAnzeigeSek((performance.now() - rundenStart.current) / 1000)
+      setAnzeigeSek((performance.now() - start.current) / 1000)
     }, 100)
     return () => clearInterval(timer)
   }, [laeuft])
 
-  const rundeSek = () => Math.round(((performance.now() - rundenStart.current) / 1000) * 10) / 10
+  const aktuelleZeit = () => Math.round(((performance.now() - start.current) / 1000) * 10) / 10
 
-  const start = () => {
-    rundenStart.current = performance.now()
+  const starten = () => {
+    start.current = performance.now()
     setAnzeigeSek(0)
+    setGespeichert(0)
     setLaeuft(true)
   }
 
-  const runde = () => {
-    onMessung(rundeSek())
-    setRundenDieseSitzung((n) => n + 1)
-    rundenStart.current = performance.now()
+  const speichernUndWeiter = () => {
+    onMessung(aktuelleZeit())
+    setGespeichert((n) => n + 1)
+    start.current = performance.now()
     setAnzeigeSek(0)
   }
 
-  const stopp = () => {
-    onMessung(rundeSek())
-    setRundenDieseSitzung((n) => n + 1)
+  const speichernUndAnhalten = () => {
+    onMessung(aktuelleZeit())
+    setGespeichert((n) => n + 1)
     setLaeuft(false)
     setAnzeigeSek(0)
   }
 
-  const verwerfen = () => {
+  const abbrechen = () => {
     setLaeuft(false)
     setAnzeigeSek(0)
   }
 
   return (
-    <div className="rounded-xl border-2 border-slate-300 bg-white p-4">
-      <div
-        className="text-center font-mono text-6xl font-bold tabular-nums text-slate-900"
-        aria-live="off"
-      >
-        {formatiereStoppuhr(anzeigeSek)}
+    <div className="border border-tinte bg-papier">
+      <div className="border-b border-linie px-4 py-6 text-center">
+        <div className="zahl text-7xl font-bold leading-none">{formatiereStoppuhr(anzeigeSek)}</div>
+        <div className="mt-2 text-sm text-tinte-schwach">
+          {laeuft
+            ? gespeichert === 0
+              ? 'Uhr läuft'
+              : `Uhr läuft — ${gespeichert} Messung${gespeichert === 1 ? '' : 'en'} in diesem Durchgang gespeichert`
+            : 'Bereit'}
+        </div>
       </div>
-      <div className="mt-1 text-center text-sm text-slate-500">
-        {laeuft ? `läuft — ${rundenDieseSitzung} Messung(en) in dieser Sitzung` : 'bereit'}
-      </div>
-      <div className="mt-4 grid grid-cols-2 gap-3">
+
+      <div className="flex flex-col gap-2 p-3">
         {!laeuft ? (
           <button
             type="button"
-            onClick={start}
-            className="col-span-2 min-h-20 rounded-xl bg-green-700 text-2xl font-bold text-white active:bg-green-800"
+            onClick={starten}
+            className="min-h-20 w-full border border-tinte bg-tinte text-2xl font-bold text-papier"
           >
             Start
           </button>
@@ -82,24 +89,24 @@ export function Stoppuhr({ onMessung }: StoppuhrProps) {
           <>
             <button
               type="button"
-              onClick={runde}
-              className="min-h-20 rounded-xl bg-blue-700 text-2xl font-bold text-white active:bg-blue-800"
+              onClick={speichernUndWeiter}
+              className="min-h-20 w-full border border-tinte bg-tinte text-2xl font-bold text-papier"
             >
-              Runde
+              Messung speichern — Uhr läuft weiter
             </button>
             <button
               type="button"
-              onClick={stopp}
-              className="min-h-20 rounded-xl bg-slate-800 text-2xl font-bold text-white active:bg-slate-900"
+              onClick={speichernUndAnhalten}
+              className="min-h-16 w-full border border-tinte bg-papier text-lg font-bold"
             >
-              Stopp
+              Messung speichern und anhalten
             </button>
             <button
               type="button"
-              onClick={verwerfen}
-              className="col-span-2 min-h-14 rounded-xl border-2 border-slate-400 text-lg font-semibold text-slate-700 active:bg-slate-100"
+              onClick={abbrechen}
+              className="min-h-14 w-full border border-linie bg-papier text-base font-semibold text-tinte-schwach"
             >
-              Runde verwerfen und anhalten
+              Abbrechen — diese Zeit nicht speichern
             </button>
           </>
         )}

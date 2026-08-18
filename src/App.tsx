@@ -1,98 +1,115 @@
 import { useEffect, useRef, useState } from 'react'
+import { AuditLeiste } from './components/AuditLeiste'
 import { Erfassung } from './components/Erfassung'
 import { Kalkulation } from './components/Kalkulation'
+import { Hinweis, Knopf } from './components/ui'
 import { parseImport, serialisiereExport } from './lib/exportImport'
+import { formatiereDatum } from './lib/format'
 import { ladeLetztenExport, merkeExport } from './lib/storage'
 import { useAudits } from './state/useAudits'
 
-type Ansicht = 'erfassung' | 'kalkulation'
+type Ansicht = 'messen' | 'auswerten'
+
+/** Nach so vielen Tagen ohne Sicherung wird daran erinnert (Begründung: QUELLEN.md, Thema 9). */
+const ERINNERUNG_NACH_TAGEN = 1
 
 export default function App() {
   const { geladen, audits, setAudits, aktualisiereAudit } = useAudits()
-  const [ansicht, setAnsicht] = useState<Ansicht>('erfassung')
+  const [ansicht, setAnsicht] = useState<Ansicht>('messen')
   const [aktivesAuditId, setAktivesAuditId] = useState<string | null>(null)
   const [letzterExport, setLetzterExport] = useState<string | null>(null)
+  const [meldung, setMeldung] = useState<string | null>(null)
   const dateiInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     void ladeLetztenExport().then(setLetzterExport)
   }, [])
 
-  const exportieren = () => {
+  // Ist nichts ausgewählt, aber etwas vorhanden: erste Messung vorbelegen,
+  // damit die Ansicht nie ohne erkennbaren Grund leer bleibt.
+  useEffect(() => {
+    if (geladen && aktivesAuditId === null && audits.length > 0) {
+      setAktivesAuditId(audits[0]!.id)
+    }
+  }, [geladen, aktivesAuditId, audits])
+
+  const audit = audits.find((a) => a.id === aktivesAuditId) ?? null
+
+  const sichern = () => {
     const jetzt = new Date().toISOString()
-    const json = serialisiereExport(audits, jetzt)
-    const blob = new Blob([json], { type: 'application/json' })
+    const blob = new Blob([serialisiereExport(audits, jetzt)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `prozess-audit-export-${jetzt.slice(0, 10)}.json`
+    a.download = `prozess-audit-${jetzt.slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
     void merkeExport(jetzt)
     setLetzterExport(jetzt)
+    setMeldung('Sicherungsdatei wurde erstellt.')
   }
 
-  const importieren = async (datei: File) => {
+  const einlesen = async (datei: File) => {
     try {
-      const text = await datei.text()
-      const daten = parseImport(text)
+      const daten = parseImport(await datei.text())
       setAudits((alt) => {
-        const importIds = new Set(daten.audits.map((a) => a.id))
-        // Audits mit gleicher ID werden ersetzt, neue angehängt.
-        return [...alt.filter((a) => !importIds.has(a.id)), ...daten.audits]
+        const ids = new Set(daten.audits.map((a) => a.id))
+        // Gleiche Kennung ersetzt den vorhandenen Stand, alles andere kommt hinzu.
+        return [...alt.filter((a) => !ids.has(a.id)), ...daten.audits]
       })
-      window.alert(`${daten.audits.length} Audit(s) importiert (Export vom ${daten.exportiertAm.slice(0, 10)}).`)
+      const ersteId = daten.audits[0]?.id
+      if (ersteId) setAktivesAuditId(ersteId)
+      setMeldung(
+        `${daten.audits.length} Messung${daten.audits.length === 1 ? '' : 'en'} eingelesen (Stand ${formatiereDatum(daten.exportiertAm)}).`,
+      )
     } catch (fehler) {
-      window.alert(`Import abgelehnt: ${fehler instanceof Error ? fehler.message : String(fehler)}`)
+      setMeldung(
+        `Die Datei konnte nicht eingelesen werden: ${fehler instanceof Error ? fehler.message : String(fehler)}`,
+      )
     }
   }
 
-  // Export-Erinnerung: IndexedDB auf iOS ist nicht garantiert dauerhaft
-  // (Belege: QUELLEN.md Thema 9) — bei ungesicherten Messungen deutlich warnen.
   const hatDaten = audits.some((a) => a.prozesse.length > 0)
-  const exportAlt =
-    letzterExport === null || Date.now() - new Date(letzterExport).getTime() > 24 * 60 * 60 * 1000
+  const erinnern =
+    hatDaten &&
+    (letzterExport === null ||
+      Date.now() - new Date(letzterExport).getTime() > ERINNERUNG_NACH_TAGEN * 86_400_000)
 
   if (!geladen) {
-    return <p className="p-8 text-lg text-slate-500">Lade gespeicherte Audits …</p>
+    return <p className="p-6 text-tinte-schwach">Gespeicherte Daten werden geladen …</p>
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-16">
-      <header className="sticky top-0 z-10 border-b-2 border-slate-300 bg-white px-4 py-3">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3">
-          <h1 className="mr-auto text-xl font-bold text-slate-900">Prozess-Audit</h1>
-          <nav className="flex gap-2">
-            {(['erfassung', 'kalkulation'] as const).map((a) => (
+    <div className="min-h-screen pb-16">
+      <header className="border-b-2 border-tinte bg-papier">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
+          <h1 className="text-xl font-bold tracking-tight">Prozess-Audit</h1>
+
+          <nav className="flex" aria-label="Ansicht">
+            {(
+              [
+                ['messen', 'Messen'],
+                ['auswerten', 'Auswerten'],
+              ] as const
+            ).map(([wert, text], i) => (
               <button
-                key={a}
+                key={wert}
                 type="button"
-                onClick={() => setAnsicht(a)}
-                className={`min-h-12 rounded-xl border-2 px-4 text-base font-semibold ${
-                  ansicht === a
-                    ? 'border-slate-800 bg-slate-800 text-white'
-                    : 'border-slate-400 bg-white text-slate-700 active:bg-slate-100'
+                onClick={() => setAnsicht(wert)}
+                className={`min-h-11 border px-5 font-semibold ${i === 0 ? '' : '-ml-px'} ${
+                  ansicht === wert
+                    ? 'border-tinte bg-tinte text-papier'
+                    : 'border-tinte bg-papier text-tinte'
                 }`}
               >
-                {a === 'erfassung' ? 'Erfassung' : 'Kalkulation'}
+                {text}
               </button>
             ))}
           </nav>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={exportieren}
-              className="min-h-12 rounded-xl border-2 border-slate-400 px-4 text-base font-semibold text-slate-700 active:bg-slate-100"
-            >
-              Export JSON
-            </button>
-            <button
-              type="button"
-              onClick={() => dateiInput.current?.click()}
-              className="min-h-12 rounded-xl border-2 border-slate-400 px-4 text-base font-semibold text-slate-700 active:bg-slate-100"
-            >
-              Import
-            </button>
+
+          <div className="ml-auto flex gap-2">
+            <Knopf onClick={sichern}>Daten sichern</Knopf>
+            <Knopf onClick={() => dateiInput.current?.click()}>Daten einlesen</Knopf>
             <input
               ref={dateiInput}
               type="file"
@@ -100,42 +117,53 @@ export default function App() {
               className="hidden"
               onChange={(e) => {
                 const datei = e.target.files?.[0]
-                if (datei) void importieren(datei)
+                if (datei) void einlesen(datei)
                 e.target.value = ''
               }}
             />
           </div>
         </div>
-        {hatDaten && exportAlt && (
-          <p className="mx-auto mt-2 max-w-5xl rounded-lg bg-amber-100 p-2 text-sm font-semibold text-amber-900">
-            Daten liegen nur auf diesem Gerät.{' '}
-            {letzterExport
-              ? `Letzter Export: ${letzterExport.slice(0, 10)}.`
-              : 'Noch nie exportiert.'}{' '}
-            iOS kann Browser-Speicher unter Umständen räumen — nach jeder Messreihe exportieren
-            (Belege: QUELLEN.md, Speicher-Risiko).
-          </p>
-        )}
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        {ansicht === 'erfassung' ? (
-          <Erfassung
-            audits={audits}
-            setAudits={setAudits}
-            aktualisiereAudit={aktualisiereAudit}
-            aktivesAuditId={aktivesAuditId}
-            setAktivesAuditId={setAktivesAuditId}
-          />
-        ) : (
-          <Kalkulation
-            audits={audits}
-            aktualisiereAudit={aktualisiereAudit}
-            aktivesAuditId={aktivesAuditId}
-            setAktivesAuditId={setAktivesAuditId}
-          />
+      <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4">
+        {meldung && (
+          <div className="flex items-start gap-3 border border-tinte bg-papier px-4 py-3">
+            <p className="flex-1">{meldung}</p>
+            <button
+              type="button"
+              onClick={() => setMeldung(null)}
+              className="min-h-11 px-2 font-semibold underline"
+            >
+              Schließen
+            </button>
+          </div>
         )}
-      </main>
+
+        {erinnern && (
+          <Hinweis titel="Daten sichern" wichtig>
+            Die Daten liegen nur auf diesem Gerät.{' '}
+            {letzterExport
+              ? `Zuletzt gesichert am ${formatiereDatum(letzterExport)}.`
+              : 'Bisher wurde noch nicht gesichert.'}{' '}
+            Über <strong>Daten sichern</strong> eine Datei ablegen — damit werden die Messungen auch
+            auf den Rechner übertragen.
+          </Hinweis>
+        )}
+
+        <AuditLeiste
+          audits={audits}
+          aktivesAuditId={aktivesAuditId}
+          setAktivesAuditId={setAktivesAuditId}
+          setAudits={setAudits}
+          aktualisiereAudit={aktualisiereAudit}
+        />
+
+        {ansicht === 'messen' ? (
+          <Erfassung audit={audit} aktualisiereAudit={aktualisiereAudit} />
+        ) : (
+          <Kalkulation audit={audit} audits={audits} aktualisiereAudit={aktualisiereAudit} />
+        )}
+      </div>
     </div>
   )
 }

@@ -1,8 +1,78 @@
 @import "tailwindcss";
 
-/* Große Touch-Targets und hoher Kontrast sind Anforderungen der Erfassungs-Ansicht (iPad).
-   Basis-Regeln hier, Feinheiten per Tailwind-Klassen in den Komponenten. */
-html {
-  -webkit-text-size-adjust: 100%;
-  touch-action: manipulation;
+/*
+  Gestaltung: ausschließlich Schwarz, Weiß und Grau. Keine Farbakzente.
+  Zustände werden über Kontrast (invertierte Flächen), Linienstärke und
+  Typografie unterschieden, nicht über Farbe — das bleibt auch im
+  Schwarz-Weiß-Ausdruck und bei Farbfehlsichtigkeit eindeutig lesbar.
+
+  Bedienung auf dem iPad: Mindestgröße für antippbare Flächen 44 px
+  (Apple Human Interface Guidelines), im Messbereich deutlich größer.
+*/
+
+@theme {
+  --color-papier: #ffffff;
+  --color-tinte: #000000;
+  --color-tinte-schwach: #4a4a4a;
+  --color-linie: #c8c8c8;
+  --color-linie-kraeftig: #000000;
+  --color-flaeche: #f4f4f4;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+    Arial, sans-serif;
+}
+
+/*
+  Wichtig: Diese Grundregeln stehen in @layer base. Ohne Layer hätten sie
+  Vorrang vor sämtlichen Tailwind-Klassen (Regeln außerhalb von Layern gewinnen
+  gegen Regeln in Layern) — dann würde etwa "color: inherit" für Schaltflächen
+  jede gesetzte Textfarbe aushebeln und Schrift auf schwarzem Grund verschwinden.
+*/
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+    background: var(--color-flaeche);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-tinte);
+    font-size: 17px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Schriftart der Formularelemente vom Rest übernehmen (Farbe NICHT erzwingen). */
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+  }
+
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  button:focus-visible {
+    outline: 2px solid var(--color-tinte);
+    outline-offset: 2px;
+  }
+
+  /* Schieberegler in Schwarz statt in der Systemfarbe (meist Blau). */
+  input[type="range"] {
+    accent-color: #000000;
+    height: 28px;
+  }
+
+  input[type="range"]:disabled {
+    opacity: 0.35;
+  }
+}
+
+/* Zahlen springen nicht, wenn sich Ziffern ändern (Stoppuhr, Tabellen). */
+@layer utilities {
+  .zahl {
+    font-variant-numeric: tabular-nums;
+  }
 }

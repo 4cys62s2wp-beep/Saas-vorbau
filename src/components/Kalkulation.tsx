@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import type { Audit } from '../types'
+import type { Audit, Prozess, Schritt } from '../types'
 import { berechneAudit, vergleicheAudits } from '../lib/kennzahlen'
 import { berechneStundensatz } from '../lib/stundensatz'
+import { abschlagProzentAusFaktor, faktorAusAbschlagProzent, offenePunkte } from '../lib/audit'
 import { KONSERVATIV_BEGRUENDUNGEN } from '../lib/quellen'
 import {
   formatiereEuro,
@@ -11,80 +12,55 @@ import {
   formatiereStunden,
   formatiereZahl,
 } from '../lib/format'
+import { Abschnitt, Feld, Hinweis, Knopf, Textfeld } from './ui'
 
 /**
- * Kalkulations-Ansicht (Mac): Schritttabelle, Automatisierbarkeit,
- * Restaufwand-Slider, Stundensatzrechner, Konservativ-Abschlag mit
- * Pflicht-Begründung, Ergebnisblock, Baseline-Nachmessung-Vergleich.
+ * Auswertung am Rechner: Stundensatz, Bewertung der Arbeitsschritte,
+ * Sicherheitsabschlag, Ergebnis und PDF.
  */
 interface KalkulationProps {
+  audit: Audit | null
   audits: Audit[]
   aktualisiereAudit: (id: string, f: (a: Audit) => Audit) => void
-  aktivesAuditId: string | null
-  setAktivesAuditId: (id: string | null) => void
 }
 
-const feldKlasse = 'min-h-11 rounded-lg border-2 border-slate-400 bg-white px-3 text-base'
+const zahl = (s: string) => Number(s.replace(/\./g, '').replace(',', '.'))
 
-export function Kalkulation({
-  audits,
-  aktualisiereAudit,
-  aktivesAuditId,
-  setAktivesAuditId,
-}: KalkulationProps) {
-  const audit = audits.find((a) => a.id === aktivesAuditId) ?? null
-
-  if (audits.length === 0) {
-    return <p className="text-lg text-slate-600">Noch keine Audits — erst in der Erfassung messen oder JSON importieren.</p>
+export function Kalkulation({ audit, audits, aktualisiereAudit }: KalkulationProps) {
+  if (!audit) {
+    return (
+      <p className="border border-linie bg-papier p-4">
+        Oben einen Betrieb auswählen. Sind noch keine Daten vorhanden, zuerst in der Erfassung
+        messen oder eine Sicherungsdatei einlesen.
+      </p>
+    )
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="rounded-xl border-2 border-slate-300 bg-white p-4">
-        <label className="flex flex-col gap-2">
-          <span className="text-sm font-semibold uppercase text-slate-500">Audit</span>
-          <select
-            className={feldKlasse}
-            value={aktivesAuditId ?? ''}
-            onChange={(e) => setAktivesAuditId(e.target.value === '' ? null : e.target.value)}
-          >
-            <option value="">— wählen —</option>
-            {audits.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.betrieb} ({a.gewerk}) — {a.phase === 'baseline' ? 'Baseline' : 'Nachmessung'}, {a.datum}
-              </option>
-            ))}
-          </select>
-        </label>
-      </section>
-
-      {audit && (
-        <>
-          <StundensatzBereich audit={audit} aktualisiereAudit={aktualisiereAudit} />
-          <SchrittTabelle audit={audit} aktualisiereAudit={aktualisiereAudit} />
-          <AbschlagBereich audit={audit} aktualisiereAudit={aktualisiereAudit} />
-          <ErgebnisBlock audit={audit} />
-          <VergleichBereich audit={audit} audits={audits} />
-          <PdfBereich audit={audit} audits={audits} />
-        </>
-      )}
+    <div className="flex flex-col gap-4">
+      <StundensatzAbschnitt audit={audit} aktualisiereAudit={aktualisiereAudit} />
+      <BewertungsAbschnitt audit={audit} aktualisiereAudit={aktualisiereAudit} />
+      <AbschlagAbschnitt audit={audit} aktualisiereAudit={aktualisiereAudit} />
+      <ErgebnisAbschnitt audit={audit} />
+      <VergleichAbschnitt audit={audit} audits={audits} />
+      <PdfAbschnitt audit={audit} audits={audits} />
     </div>
   )
 }
 
-function StundensatzBereich({
+function StundensatzAbschnitt({
   audit,
   aktualisiereAudit,
 }: {
   audit: Audit
   aktualisiereAudit: KalkulationProps['aktualisiereAudit']
 }) {
-  const [brutto, setBrutto] = useState('45000')
+  const [offen, setOffen] = useState(false)
+  const [brutto, setBrutto] = useState('')
   const [lnk, setLnk] = useState('')
   const [gemein, setGemein] = useState('')
   const [stunden, setStunden] = useState('')
 
-  const zahl = (s: string) => Number(s.replace(/\./g, '').replace(',', '.'))
   const eingaben = {
     bruttoJahreslohn: zahl(brutto),
     lohnnebenkostenProzent: zahl(lnk),
@@ -92,101 +68,114 @@ function StundensatzBereich({
     produktiveStundenProJahr: zahl(stunden),
   }
   const rechenbar =
-    Number.isFinite(eingaben.bruttoJahreslohn) &&
-    eingaben.bruttoJahreslohn >= 0 &&
-    Number.isFinite(eingaben.lohnnebenkostenProzent) &&
-    eingaben.lohnnebenkostenProzent >= 0 &&
-    Number.isFinite(eingaben.gemeinkostenProzent) &&
-    eingaben.gemeinkostenProzent >= 0 &&
+    [
+      eingaben.bruttoJahreslohn,
+      eingaben.lohnnebenkostenProzent,
+      eingaben.gemeinkostenProzent,
+    ].every((w) => Number.isFinite(w) && w >= 0) &&
     Number.isFinite(eingaben.produktiveStundenProJahr) &&
     eingaben.produktiveStundenProJahr > 0
-
   const ergebnis = rechenbar ? berechneStundensatz(eingaben) : null
 
   return (
-    <section className="rounded-xl border-2 border-slate-300 bg-white p-4">
-      <h3 className="text-lg font-bold text-slate-900">Interner Stundensatz</h3>
-      <p className="mt-1 text-sm text-slate-600">
-        Kostensatz ohne Gewinn/Wagnis — die konservative Basis für eine Ersparnis-Rechnung
-        (Herleitung und Belege: QUELLEN.md, Themen 1–3). Entweder direkt eintragen oder unten
-        herleiten.
-      </p>
-      <div className="mt-3 flex items-end gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-semibold text-slate-600">Stundensatz intern (€/h)</span>
-          <input
-            className={`${feldKlasse} w-40`}
-            inputMode="decimal"
-            value={audit.stundensatzIntern === 0 ? '' : String(audit.stundensatzIntern).replace('.', ',')}
-            placeholder="z. B. 52,84"
-            onChange={(e) => {
-              const v = zahl(e.target.value)
-              aktualisiereAudit(audit.id, (a) => ({
-                ...a,
-                stundensatzIntern: Number.isFinite(v) && v >= 0 ? v : 0,
-              }))
-            }}
-          />
-        </label>
+    <Abschnitt
+      nummer={1}
+      titel="Interner Stundensatz"
+      hinweis="Was eine Arbeitsstunde den Betrieb kostet — Lohn, Lohnnebenkosten und Gemeinkosten, ohne Gewinnaufschlag. Das ist die vorsichtige Grundlage: eingesparte Zeit spart Kosten, nicht Umsatz."
+      aktionen={
+        <Knopf onClick={() => setOffen(!offen)} aktiv={offen}>
+          {offen ? 'Rechner schließen' : 'Stundensatz ausrechnen'}
+        </Knopf>
+      }
+    >
+      <div className="flex flex-wrap items-end gap-4">
+        <Feld
+          label="Stundensatz (Euro je Stunde)"
+          inputMode="decimal"
+          placeholder="z. B. 52,84"
+          breite="w-60"
+          value={audit.stundensatzIntern === 0 ? '' : String(audit.stundensatzIntern).replace('.', ',')}
+          onChange={(e) => {
+            const v = zahl(e.target.value)
+            aktualisiereAudit(audit.id, (a) => ({
+              ...a,
+              stundensatzIntern: Number.isFinite(v) && v >= 0 ? v : 0,
+            }))
+          }}
+        />
         {audit.stundensatzIntern === 0 && (
-          <p className="pb-2 font-semibold text-red-700">
-            Pflichtfeld — ohne Stundensatz keine €-Rechnung.
-          </p>
+          <p className="pb-2 font-semibold">Pflichtangabe — ohne Stundensatz keine Euro-Rechnung.</p>
         )}
       </div>
 
-      <details className="mt-4">
-        <summary className="cursor-pointer font-semibold text-slate-700">
-          Stundensatz herleiten (Rechner)
-        </summary>
-        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-slate-600">Bruttojahreslohn (€)</span>
-            <input className={feldKlasse} inputMode="decimal" value={brutto} onChange={(e) => setBrutto(e.target.value)} />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-slate-600">Lohnnebenkosten (%)</span>
-            <input className={feldKlasse} inputMode="decimal" value={lnk} placeholder="22–28 (QUELLEN.md T2)" onChange={(e) => setLnk(e.target.value)} />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-slate-600">Gemeinkosten (%)</span>
-            <input className={feldKlasse} inputMode="decimal" value={gemein} placeholder="aus BWA des Betriebs" onChange={(e) => setGemein(e.target.value)} />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-slate-600">Produktive h/Jahr</span>
-            <input className={feldKlasse} inputMode="decimal" value={stunden} placeholder="1455–1503 (QUELLEN.md T3)" onChange={(e) => setStunden(e.target.value)} />
-          </label>
-        </div>
-        {ergebnis && (
-          <div className="mt-3 rounded-lg bg-slate-50 p-3 text-base text-slate-800">
-            <p>
-              Personalkosten {formatiereEuro(ergebnis.personalkostenProJahr)} + Gemeinkosten{' '}
-              {formatiereEuro(ergebnis.gemeinkostenProJahr)} ={' '}
-              {formatiereEuro(ergebnis.gesamtkostenProJahr)} ÷ {formatiereZahl(eingaben.produktiveStundenProJahr)} h ={' '}
-              <strong>{formatiereEuro(ergebnis.stundensatz)}/h</strong>
-            </p>
-            <button
-              type="button"
-              className="mt-2 min-h-11 rounded-lg bg-slate-800 px-4 font-semibold text-white active:bg-slate-900"
-              onClick={() =>
-                aktualisiereAudit(audit.id, (a) => ({
-                  ...a,
-                  stundensatzIntern: Math.round(ergebnis.stundensatz * 100) / 100,
-                  // Herleitung mitspeichern → voller Rechenweg im PDF
-                  stundensatzHerleitung: eingaben,
-                }))
-              }
-            >
-              Als Stundensatz übernehmen
-            </button>
+      {offen && (
+        <div className="mt-4 border-t border-linie pt-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Feld
+              label="Bruttolohn im Jahr (Euro)"
+              inputMode="decimal"
+              placeholder="z. B. 45000"
+              value={brutto}
+              onChange={(e) => setBrutto(e.target.value)}
+            />
+            <Feld
+              label="Lohnnebenkosten (Prozent)"
+              inputMode="decimal"
+              placeholder="z. B. 24"
+              hinweis="Arbeitgeberanteile, Umlagen, Berufsgenossenschaft. Beleg: QUELLEN.md, Thema 2."
+              value={lnk}
+              onChange={(e) => setLnk(e.target.value)}
+            />
+            <Feld
+              label="Gemeinkosten (Prozent)"
+              inputMode="decimal"
+              placeholder="aus der BWA"
+              hinweis="Miete, Fahrzeuge, Versicherungen, Verwaltung — bezogen auf die Personalkosten."
+              value={gemein}
+              onChange={(e) => setGemein(e.target.value)}
+            />
+            <Feld
+              label="Produktive Stunden im Jahr"
+              inputMode="decimal"
+              placeholder="z. B. 1455"
+              hinweis="Kammer-Beispiele nennen 1.455 bis 1.503 Stunden. Beleg: QUELLEN.md, Thema 3."
+              value={stunden}
+              onChange={(e) => setStunden(e.target.value)}
+            />
           </div>
-        )}
-      </details>
-    </section>
+          {ergebnis && (
+            <div className="mt-4 border border-linie bg-flaeche p-3">
+              <p className="zahl">
+                Personalkosten {formatiereEuro(ergebnis.personalkostenProJahr)} + Gemeinkosten{' '}
+                {formatiereEuro(ergebnis.gemeinkostenProJahr)} ={' '}
+                {formatiereEuro(ergebnis.gesamtkostenProJahr)} ÷{' '}
+                {formatiereZahl(eingaben.produktiveStundenProJahr)} Stunden ={' '}
+                <strong>{formatiereEuro(ergebnis.stundensatz)} je Stunde</strong>
+              </p>
+              <div className="mt-3">
+                <Knopf
+                  art="primaer"
+                  onClick={() =>
+                    aktualisiereAudit(audit.id, (a) => ({
+                      ...a,
+                      stundensatzIntern: Math.round(ergebnis.stundensatz * 100) / 100,
+                      // Die Herleitung wird mitgespeichert, damit sie im PDF steht.
+                      stundensatzHerleitung: eingaben,
+                    }))
+                  }
+                >
+                  Diesen Stundensatz übernehmen
+                </Knopf>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </Abschnitt>
   )
 }
 
-function SchrittTabelle({
+function BewertungsAbschnitt({
   audit,
   aktualisiereAudit,
 }: {
@@ -195,65 +184,58 @@ function SchrittTabelle({
 }) {
   const kennzahlen = useMemo(() => berechneAudit(audit), [audit])
 
-  const setzeSchritt = (
-    prozessId: string,
-    schrittId: string,
-    f: (s: Audit['prozesse'][number]['schritte'][number]) => Audit['prozesse'][number]['schritte'][number],
-  ) => {
+  const setzeSchritt = (pId: string, sId: string, f: (s: Schritt) => Schritt) => {
     aktualisiereAudit(audit.id, (a) => ({
       ...a,
-      prozesse: a.prozesse.map((p) =>
-        p.id === prozessId
-          ? { ...p, schritte: p.schritte.map((s) => (s.id === schrittId ? f(s) : s)) }
-          : p,
+      prozesse: a.prozesse.map((p: Prozess) =>
+        p.id === pId ? { ...p, schritte: p.schritte.map((s) => (s.id === sId ? f(s) : s)) } : p,
       ),
     }))
   }
 
-  const setzeHaeufigkeit = (prozessId: string, wert: number) => {
-    aktualisiereAudit(audit.id, (a) => ({
-      ...a,
-      prozesse: a.prozesse.map((p) =>
-        p.id === prozessId ? { ...p, haeufigkeitProMonat: wert } : p,
-      ),
-    }))
+  if (audit.prozesse.length === 0) {
+    return (
+      <Abschnitt nummer={2} titel="Was lässt sich automatisieren?">
+        <p>Für diesen Betrieb ist noch kein Prozess erfasst.</p>
+      </Abschnitt>
+    )
   }
 
   return (
-    <section className="rounded-xl border-2 border-slate-300 bg-white p-4">
-      <h3 className="text-lg font-bold text-slate-900">Schritte</h3>
+    <Abschnitt
+      nummer={2}
+      titel="Was lässt sich automatisieren?"
+      hinweis="Für jeden Arbeitsschritt festlegen, ob er sich automatisieren lässt und wie viel Zeit danach noch übrig bleibt. Nur diese Schritte gehen in die Ersparnis ein."
+    >
       {kennzahlen.prozesse.map((pk) => {
         const prozess = audit.prozesse.find((p) => p.id === pk.prozessId)
         if (!prozess) return null
         return (
-          <div key={pk.prozessId} className="mt-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <h4 className="font-bold text-slate-800">{pk.name}</h4>
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                Häufigkeit/Monat:
-                <input
-                  className={`${feldKlasse} w-24`}
-                  inputMode="decimal"
-                  value={String(prozess.haeufigkeitProMonat).replace('.', ',')}
-                  onChange={(e) => {
-                    const v = Number(e.target.value.replace(',', '.'))
-                    setzeHaeufigkeit(pk.prozessId, Number.isFinite(v) && v >= 0 ? v : 0)
-                  }}
-                />
-              </label>
-            </div>
+          <div key={pk.prozessId} className="mb-6 last:mb-0">
+            <h3 className="font-bold">
+              {pk.name}{' '}
+              <span className="zahl font-normal text-tinte-schwach">
+                — {formatiereZahl(pk.haeufigkeitProMonat, pk.haeufigkeitProMonat % 1 === 0 ? 0 : 1)}× im
+                Monat
+              </span>
+            </h3>
+            {pk.schritte.length === 0 ? (
+              <p className="mt-1 text-tinte-schwach">
+                Für diesen Prozess ist noch kein Arbeitsschritt erfasst.
+              </p>
+            ) : (
             <div className="mt-2 overflow-x-auto">
-              <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[820px] border-collapse text-left text-sm">
                 <thead>
-                  <tr className="border-b-2 border-slate-300 text-slate-500">
-                    <th className="py-2 pr-3 font-semibold">Schritt</th>
-                    <th className="py-2 pr-3 font-semibold">n</th>
-                    <th className="py-2 pr-3 font-semibold">Median</th>
-                    <th className="py-2 pr-3 font-semibold">Ist min/Monat</th>
-                    <th className="py-2 pr-3 font-semibold">automatisierbar</th>
-                    <th className="py-2 pr-3 font-semibold">Restaufwand</th>
-                    <th className="py-2 pr-3 font-semibold">Soll min/Monat</th>
-                    <th className="py-2 font-semibold">Ersparnis</th>
+                  <tr className="border-b-2 border-tinte">
+                    <th className="py-2 pr-3">Arbeitsschritt</th>
+                    <th className="py-2 pr-3">Messungen</th>
+                    <th className="py-2 pr-3">Mittlere Dauer</th>
+                    <th className="py-2 pr-3">Heute</th>
+                    <th className="py-2 pr-3">Automatisierbar</th>
+                    <th className="py-2 pr-3">Rest danach</th>
+                    <th className="py-2 pr-3">Künftig</th>
+                    <th className="py-2">Ersparnis</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -261,37 +243,28 @@ function SchrittTabelle({
                     const schritt = prozess.schritte.find((s) => s.id === sk.schrittId)
                     if (!schritt) return null
                     return (
-                      <tr key={sk.schrittId} className="border-b border-slate-200 align-middle">
-                        <td className="py-2 pr-3 font-semibold text-slate-900">
-                          {sk.name}
-                          {sk.warnungen.length > 0 && (
-                            <span className="ml-1 text-amber-700" title={sk.warnungen.join('\n')}>
-                              ⚠
-                            </span>
-                          )}
+                      <tr key={sk.schrittId} className="border-b border-linie align-middle">
+                        <td className="py-2 pr-3 font-semibold">{sk.name}</td>
+                        <td className="zahl py-2 pr-3">
+                          {sk.anzahlMessungen}
+                          {sk.warnungen.length > 0 && <strong> *</strong>}
                         </td>
-                        <td className="py-2 pr-3 tabular-nums">{sk.anzahlMessungen}</td>
-                        <td className="py-2 pr-3 tabular-nums">
+                        <td className="zahl py-2 pr-3">
                           {sk.medianSek === null ? '—' : formatiereSekunden(sk.medianSek)}
                         </td>
-                        <td className="py-2 pr-3 tabular-nums">{formatiereMinuten(sk.istMinutenProMonat)}</td>
+                        <td className="zahl py-2 pr-3">{formatiereMinuten(sk.istMinutenProMonat)}</td>
                         <td className="py-2 pr-3">
-                          <button
-                            type="button"
+                          <Knopf
+                            aktiv={schritt.automatisierbar}
                             onClick={() =>
                               setzeSchritt(pk.prozessId, sk.schrittId, (s) => ({
                                 ...s,
                                 automatisierbar: !s.automatisierbar,
                               }))
                             }
-                            className={`min-h-10 rounded-lg border-2 px-3 font-semibold ${
-                              schritt.automatisierbar
-                                ? 'border-green-700 bg-green-700 text-white'
-                                : 'border-slate-400 bg-white text-slate-600'
-                            }`}
                           >
-                            {schritt.automatisierbar ? 'ja' : 'nein'}
-                          </button>
+                            {schritt.automatisierbar ? 'Ja' : 'Nein'}
+                          </Knopf>
                         </td>
                         <td className="py-2 pr-3">
                           <div className="flex items-center gap-2">
@@ -300,6 +273,7 @@ function SchrittTabelle({
                               min={0}
                               max={100}
                               step={5}
+                              aria-label={`Restaufwand für ${sk.name}`}
                               disabled={!schritt.automatisierbar}
                               value={schritt.restaufwandProzent}
                               onChange={(e) =>
@@ -309,13 +283,15 @@ function SchrittTabelle({
                                 }))
                               }
                             />
-                            <span className="w-14 tabular-nums">
-                              {schritt.automatisierbar ? formatiereProzent(schritt.restaufwandProzent) : '—'}
+                            <span className="zahl w-14">
+                              {schritt.automatisierbar
+                                ? formatiereProzent(schritt.restaufwandProzent)
+                                : '—'}
                             </span>
                           </div>
                         </td>
-                        <td className="py-2 pr-3 tabular-nums">{formatiereMinuten(sk.sollMinutenProMonat)}</td>
-                        <td className="py-2 font-semibold tabular-nums text-green-800">
+                        <td className="zahl py-2 pr-3">{formatiereMinuten(sk.sollMinutenProMonat)}</td>
+                        <td className="zahl py-2 font-bold">
                           {formatiereMinuten(sk.ersparnisMinutenProMonat)}
                         </td>
                       </tr>
@@ -324,224 +300,290 @@ function SchrittTabelle({
                 </tbody>
               </table>
             </div>
+            )}
           </div>
         )
       })}
+
+      <p className="text-sm text-tinte-schwach">
+        Angaben „Heute“, „Künftig“ und „Ersparnis“ in Minuten pro Monat.
+      </p>
+
       {kennzahlen.warnungen.length > 0 && (
-        <ul className="mt-4 flex flex-col gap-1 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+        <div className="mt-4 flex flex-col gap-2">
           {kennzahlen.warnungen.map((w, i) => (
-            <li key={i}>⚠ {w}</li>
+            <Hinweis key={i} titel="Zu prüfen">
+              {w}
+            </Hinweis>
           ))}
-        </ul>
+        </div>
       )}
-    </section>
+    </Abschnitt>
   )
 }
 
-function AbschlagBereich({
+function AbschlagAbschnitt({
   audit,
   aktualisiereAudit,
 }: {
   audit: Audit
   aktualisiereAudit: KalkulationProps['aktualisiereAudit']
 }) {
+  const [vorschlaege, setVorschlaege] = useState(false)
+  const prozent = abschlagProzentAusFaktor(audit.konservativFaktor)
+
   return (
-    <section className="rounded-xl border-2 border-slate-300 bg-white p-4">
-      <h3 className="text-lg font-bold text-slate-900">Konservativ-Abschlag (Pflicht)</h3>
-      <p className="mt-1 text-sm text-slate-600">
-        Faktor auf die Jahresersparnis (0–1). Kein Vorgabewert — du musst ihn selbst setzen und
-        begründen; die Begründung wird im PDF mitgedruckt. Belegbare Argumente: QUELLEN.md,
-        Abschnitt Konservativ-Abschlag.
-      </p>
-      <div className="mt-3 flex flex-wrap items-end gap-4">
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-semibold text-slate-600">Faktor (z. B. 0,75)</span>
-          <input
-            className={`${feldKlasse} w-28`}
-            inputMode="decimal"
-            value={String(audit.konservativFaktor).replace('.', ',')}
-            onChange={(e) => {
-              const v = Number(e.target.value.replace(',', '.'))
-              aktualisiereAudit(audit.id, (a) => ({
-                ...a,
-                konservativFaktor: Number.isFinite(v) && v >= 0 && v <= 1 ? v : a.konservativFaktor,
-              }))
-            }}
-          />
-        </label>
-        <label className="flex grow flex-col gap-1">
-          <span className="text-sm font-semibold text-slate-600">Begründung (geht ins PDF)</span>
-          <textarea
-            className="min-h-14 rounded-lg border-2 border-slate-400 bg-white px-3 py-2 text-base"
-            value={audit.konservativBegruendung}
-            placeholder="z. B.: n=5 je Schritt (kleine Stichprobe), Einlernphase nach Umstellung, Häufigkeit saisonal geschätzt"
-            onChange={(e) =>
-              aktualisiereAudit(audit.id, (a) => ({ ...a, konservativBegruendung: e.target.value }))
-            }
-          />
-        </label>
+    <Abschnitt
+      nummer={3}
+      titel="Sicherheitsabschlag"
+      hinweis="Die errechnete Ersparnis wird bewusst gekürzt. Höhe und Begründung legen Sie selbst fest — beides steht später im PDF, damit der Kunde nachvollziehen kann, warum vorsichtig gerechnet wurde."
+    >
+      <div className="flex flex-wrap items-end gap-4">
+        <Feld
+          label="Abschlag in Prozent"
+          inputMode="decimal"
+          breite="w-44"
+          value={String(prozent).replace('.', ',')}
+          onChange={(e) => {
+            const v = zahl(e.target.value)
+            if (!Number.isFinite(v)) return
+            aktualisiereAudit(audit.id, (a) => ({ ...a, konservativFaktor: faktorAusAbschlagProzent(v) }))
+          }}
+        />
+        <p className="zahl pb-2 text-sm text-tinte-schwach">
+          Rechenfaktor {formatiereZahl(audit.konservativFaktor, 2)} — so steht es im PDF.
+        </p>
       </div>
+
+      <div className="mt-4">
+        <Textfeld
+          label="Begründung (wird im PDF gedruckt)"
+          value={audit.konservativBegruendung}
+          placeholder="Warum wird vorsichtig gerechnet?"
+          onChange={(e) =>
+            aktualisiereAudit(audit.id, (a) => ({ ...a, konservativBegruendung: e.target.value }))
+          }
+        />
+      </div>
+
       <div className="mt-3">
-        <span className="text-sm font-semibold uppercase text-slate-500">
-          Belegbare Begründungslogiken (Tap fügt Text ein — QUELLEN.md Thema 11)
-        </span>
-        <div className="mt-1 flex flex-col gap-1">
-          {KONSERVATIV_BEGRUENDUNGEN.map((b) => (
-            <button
-              key={b}
-              type="button"
-              onClick={() =>
-                aktualisiereAudit(audit.id, (a) => ({
-                  ...a,
-                  konservativBegruendung:
-                    a.konservativBegruendung.trim() === '' ? b : `${a.konservativBegruendung} ${b}`,
-                }))
-              }
-              className="rounded-lg border-2 border-slate-300 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-            >
-              + {b}
-            </button>
+        <Knopf onClick={() => setVorschlaege(!vorschlaege)} aktiv={vorschlaege}>
+          {vorschlaege ? 'Textvorschläge ausblenden' : 'Textvorschläge anzeigen'}
+        </Knopf>
+        {vorschlaege && (
+          <>
+            <div className="mt-3 flex flex-col gap-2">
+              {KONSERVATIV_BEGRUENDUNGEN.map((b) => (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() =>
+                    aktualisiereAudit(audit.id, (a) => ({
+                      ...a,
+                      konservativBegruendung:
+                        a.konservativBegruendung.trim() === ''
+                          ? b
+                          : `${a.konservativBegruendung} ${b}`,
+                    }))
+                  }
+                  className="min-h-11 border border-linie px-3 py-2 text-left text-sm"
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-sm text-tinte-schwach">
+              Anklicken übernimmt den Text in das Feld oben. Belege: QUELLEN.md, Thema 11.
+            </p>
+          </>
+        )}
+      </div>
+
+      {prozent === 0 && (
+        <div className="mt-4">
+          <Hinweis titel="Kein Abschlag gesetzt" wichtig>
+            Die Ersparnis wird ungekürzt ausgewiesen. Das ist zulässig, sollte aber bewusst so
+            gewollt sein.
+          </Hinweis>
+        </div>
+      )}
+      {audit.konservativBegruendung.trim() === '' && (
+        <div className="mt-2">
+          <Hinweis titel="Begründung fehlt" wichtig>
+            Ohne Begründung bleibt die entsprechende Zeile im PDF leer.
+          </Hinweis>
+        </div>
+      )}
+    </Abschnitt>
+  )
+}
+
+function ErgebnisAbschnitt({ audit }: { audit: Audit }) {
+  const k = useMemo(() => berechneAudit(audit), [audit])
+  const prozent = abschlagProzentAusFaktor(audit.konservativFaktor)
+
+  const zeile = (label: string, wert: string) => (
+    <div className="flex items-baseline justify-between gap-4 border-b border-linie py-2 last:border-0">
+      <span>{label}</span>
+      <span className="zahl font-semibold">{wert}</span>
+    </div>
+  )
+
+  return (
+    <Abschnitt nummer={4} titel="Ergebnis">
+      <div className="flex flex-col">
+        {zeile('Aufwand heute', `${formatiereMinuten(k.istMinutenProMonat)} im Monat`)}
+        {zeile('Aufwand nach Automatisierung', `${formatiereMinuten(k.sollMinutenProMonat)} im Monat`)}
+        {zeile(
+          'Eingesparte Zeit',
+          `${formatiereMinuten(k.ersparnisMinutenProMonat)} im Monat · ${formatiereStunden(k.ersparnisStundenProJahr)} im Jahr`,
+        )}
+        {zeile('Ersparnis im Jahr', `${formatiereEuro(k.ersparnisEuroProJahrVorAbschlag)}`)}
+        {zeile(
+          `abzüglich Sicherheitsabschlag ${formatiereProzent(prozent)}`,
+          `− ${formatiereEuro(k.ersparnisEuroProJahrVorAbschlag - k.ersparnisEuroProJahr)}`,
+        )}
+      </div>
+
+      <div className="mt-4 border-2 border-tinte p-4">
+        <p className="text-sm font-semibold">Ersparnis im Jahr, vorsichtig gerechnet</p>
+        <p className="zahl mt-1 text-4xl font-bold">{formatiereEuro(k.ersparnisEuroProJahr)}</p>
+      </div>
+
+      <div className="mt-4">
+        <p className="text-sm font-semibold">Preisrahmen für das Angebot</p>
+        <p className="text-sm text-tinte-schwach">10, 15 und 20 Prozent der Jahresersparnis</p>
+        <div className="mt-2 grid grid-cols-3 border border-linie">
+          {[
+            ['10 %', k.preisband.untergrenze],
+            ['15 %', k.preisband.mitte],
+            ['20 %', k.preisband.obergrenze],
+          ].map(([label, wert], i) => (
+            <div key={label as string} className={`p-3 text-center ${i === 1 ? 'bg-flaeche' : ''}`}>
+              <div className="text-sm text-tinte-schwach">{label as string}</div>
+              <div className="zahl mt-1 text-lg font-bold">{formatiereEuro(wert as number)}</div>
+            </div>
           ))}
         </div>
       </div>
-      {audit.konservativFaktor === 1 && (
-        <p className="mt-2 font-semibold text-red-700">
-          Faktor steht auf 1,0 — es wird nichts abgeschlagen. Bewusst so gewollt? Sonst setzen und
-          begründen.
-        </p>
+
+      {k.ersparnisEuroProJahr <= 0 && (
+        <div className="mt-4">
+          <Hinweis titel="Keine Ersparnis" wichtig>
+            Es ergibt sich kein Zeitgewinn. Prüfen: Sind Arbeitsschritte als automatisierbar
+            markiert und liegt der Restaufwand unter 100 Prozent?
+          </Hinweis>
+        </div>
       )}
-      {audit.konservativBegruendung.trim() === '' && (
-        <p className="mt-1 font-semibold text-red-700">Begründung fehlt — Pflicht fürs PDF.</p>
-      )}
-    </section>
+    </Abschnitt>
   )
 }
 
-function ErgebnisBlock({ audit }: { audit: Audit }) {
-  const k = useMemo(() => berechneAudit(audit), [audit])
-  const zeile = (label: string, wert: string, betont = false) => (
-    <div className={`flex items-baseline justify-between gap-4 ${betont ? 'text-xl font-bold' : ''}`}>
-      <span className="text-slate-600">{label}</span>
-      <span className="tabular-nums text-slate-900">{wert}</span>
-    </div>
-  )
-  return (
-    <section className="rounded-xl border-2 border-slate-800 bg-white p-4">
-      <h3 className="text-lg font-bold text-slate-900">Ergebnis</h3>
-      <div className="mt-3 flex flex-col gap-2">
-        {zeile('Ist', `${formatiereMinuten(k.istMinutenProMonat)} / Monat`)}
-        {zeile('Soll (nach Automatisierung)', `${formatiereMinuten(k.sollMinutenProMonat)} / Monat`)}
-        {zeile('Ersparnis', `${formatiereMinuten(k.ersparnisMinutenProMonat)} / Monat = ${formatiereStunden(k.ersparnisStundenProJahr)} / Jahr`)}
-        {zeile('Ersparnis vor Abschlag', `${formatiereEuro(k.ersparnisEuroProJahrVorAbschlag)} / Jahr`)}
-        {zeile(
-          `× Konservativ-Faktor ${formatiereZahl(audit.konservativFaktor, 2)}`,
-          `${formatiereEuro(k.ersparnisEuroProJahr)} / Jahr`,
-          true,
-        )}
-      </div>
-      <div className="mt-4 rounded-lg bg-slate-50 p-3">
-        <span className="text-sm font-semibold uppercase text-slate-500">Preisband (10 / 15 / 20 %)</span>
-        <div className="mt-1 flex flex-wrap gap-6 text-lg font-bold tabular-nums text-slate-900">
-          <span>{formatiereEuro(k.preisband.untergrenze)}</span>
-          <span>{formatiereEuro(k.preisband.mitte)}</span>
-          <span>{formatiereEuro(k.preisband.obergrenze)}</span>
+function VergleichAbschnitt({ audit, audits }: { audit: Audit; audits: Audit[] }) {
+  const partner = audits.find((a) => a.betrieb === audit.betrieb && a.phase !== audit.phase)
+  if (!partner) return null
+
+  const baseline = audit.phase === 'baseline' ? audit : partner
+  const nachmessung = audit.phase === 'nachmessung' ? audit : partner
+
+  let inhalt
+  try {
+    const v = vergleicheAudits(baseline, nachmessung)
+    inhalt = (
+      <div className="flex flex-col">
+        <div className="flex items-baseline justify-between gap-4 border-b border-linie py-2">
+          <span>Aufwand bei der Erstmessung</span>
+          <span className="zahl font-semibold">
+            {formatiereMinuten(v.istBaselineMinutenProMonat)} im Monat
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between gap-4 border-b border-linie py-2">
+          <span>Aufwand bei der Nachmessung</span>
+          <span className="zahl font-semibold">
+            {formatiereMinuten(v.istNachmessungMinutenProMonat)} im Monat
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between gap-4 border-b border-linie py-2">
+          <span>Tatsächlich eingespart (ohne Abschlag, weil gemessen)</span>
+          <span className="zahl font-semibold">
+            {formatiereMinuten(v.gemesseneErsparnisMinutenProMonat)} im Monat ·{' '}
+            {formatiereEuro(v.gemesseneErsparnisEuroProJahr)} im Jahr
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between gap-4 py-2">
+          <span>Vorhergesagt waren {formatiereEuro(v.prognoseEuroProJahr)} im Jahr</span>
+          <span className="zahl font-semibold">
+            {v.zielerreichungProzent === null
+              ? 'kein Vergleich möglich'
+              : `${formatiereProzent(v.zielerreichungProzent)} erreicht`}
+          </span>
         </div>
       </div>
-    </section>
+    )
+  } catch (fehler) {
+    inhalt = (
+      <Hinweis titel="Vergleich nicht möglich" wichtig>
+        {fehler instanceof Error ? fehler.message : String(fehler)}
+      </Hinweis>
+    )
+  }
+
+  return (
+    <Abschnitt
+      titel="Erstmessung und Nachmessung im Vergleich"
+      hinweis="Beide Zeitstände werden mit dem Stundensatz der Erstmessung bewertet, damit der Vergleich nur die Zeit abbildet."
+    >
+      {inhalt}
+    </Abschnitt>
   )
 }
 
-function PdfBereich({ audit, audits }: { audit: Audit; audits: Audit[] }) {
+function PdfAbschnitt({ audit, audits }: { audit: Audit; audits: Audit[] }) {
   const [laeuft, setLaeuft] = useState(false)
+  const [fehler, setFehler] = useState<string | null>(null)
   const partner = audits.find((a) => a.betrieb === audit.betrieb && a.phase !== audit.phase)
+  const punkte = offenePunkte(audit)
 
   const exportieren = async () => {
-    const probleme: string[] = []
-    if (audit.stundensatzIntern === 0) probleme.push('Stundensatz ist 0 €')
-    if (audit.konservativBegruendung.trim() === '') probleme.push('Abschlags-Begründung fehlt')
-    if (audit.konservativFaktor === 1) probleme.push('Konservativ-Faktor steht auf 1,0')
-    if (
-      probleme.length > 0 &&
-      !window.confirm(`Trotzdem exportieren? Offene Punkte:\n– ${probleme.join('\n– ')}`)
-    ) {
-      return
-    }
     setLaeuft(true)
+    setFehler(null)
     try {
       const { exportierePdf } = await import('../lib/pdf')
       await exportierePdf(audit, partner)
-    } catch (fehler) {
-      window.alert(`PDF-Export fehlgeschlagen: ${fehler instanceof Error ? fehler.message : String(fehler)}`)
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : String(e))
     } finally {
       setLaeuft(false)
     }
   }
 
   return (
-    <section className="rounded-xl border-2 border-slate-300 bg-white p-4">
-      <h3 className="text-lg font-bold text-slate-900">PDF</h3>
-      <p className="mt-1 text-sm text-slate-600">
-        Druckt Messwerte, kompletten Rechenweg, Preisband{partner ? ', Vergleich mit der anderen Phase' : ''} und den
-        Quellen-/Annahmenblock.
-      </p>
-      <button
-        type="button"
-        disabled={laeuft}
-        onClick={() => void exportieren()}
-        className="mt-3 min-h-12 rounded-xl bg-slate-800 px-6 text-base font-bold text-white active:bg-slate-900 disabled:opacity-40"
-      >
-        {laeuft ? 'Erzeuge PDF …' : 'PDF exportieren'}
-      </button>
-    </section>
-  )
-}
-
-function VergleichBereich({ audit, audits }: { audit: Audit; audits: Audit[] }) {
-  // Partner-Audit: gleicher Betrieb, andere Phase.
-  const partner = audits.filter((a) => a.betrieb === audit.betrieb && a.phase !== audit.phase)
-  if (partner.length === 0) return null
-  const baseline = audit.phase === 'baseline' ? audit : partner[0]!
-  const nachmessung = audit.phase === 'nachmessung' ? audit : partner[0]!
-
-  let inhalt
-  try {
-    const v = vergleicheAudits(baseline, nachmessung)
-    inhalt = (
-      <div className="mt-3 flex flex-col gap-2 text-base">
-        <p>
-          Ist Baseline: <strong>{formatiereMinuten(v.istBaselineMinutenProMonat)}/Monat</strong> → Ist
-          Nachmessung: <strong>{formatiereMinuten(v.istNachmessungMinutenProMonat)}/Monat</strong>
-        </p>
-        <p>
-          Gemessene Ersparnis:{' '}
-          <strong className={v.gemesseneErsparnisEuroProJahr >= 0 ? 'text-green-800' : 'text-red-700'}>
-            {formatiereMinuten(v.gemesseneErsparnisMinutenProMonat)}/Monat ={' '}
-            {formatiereEuro(v.gemesseneErsparnisEuroProJahr)}/Jahr
-          </strong>{' '}
-          (ohne Abschlag — sie ist gemessen)
-        </p>
-        <p>
-          Prognose war {formatiereEuro(v.prognoseEuroProJahr)}/Jahr →{' '}
-          {v.zielerreichungProzent === null ? (
-            'keine Zielerreichung berechenbar (Prognose war 0)'
-          ) : (
-            <strong>Zielerreichung {formatiereProzent(v.zielerreichungProzent)}</strong>
-          )}
-        </p>
-      </div>
-    )
-  } catch (fehler) {
-    inhalt = (
-      <p className="mt-3 text-red-700">
-        Vergleich nicht berechenbar: {fehler instanceof Error ? fehler.message : String(fehler)}
-      </p>
-    )
-  }
-
-  return (
-    <section className="rounded-xl border-2 border-slate-300 bg-white p-4">
-      <h3 className="text-lg font-bold text-slate-900">Baseline ↔ Nachmessung ({audit.betrieb})</h3>
-      {inhalt}
-    </section>
+    <Abschnitt
+      nummer={5}
+      titel="PDF für den Kunden"
+      hinweis={`Enthält alle gemessenen Zeiten, den vollständigen Rechenweg, den Preisrahmen${
+        partner ? ', den Vergleich beider Messungen' : ''
+      } sowie die Quellen- und Annahmenübersicht.`}
+    >
+      {punkte.length > 0 && (
+        <div className="mb-3 flex flex-col gap-2">
+          {punkte.map((p) => (
+            <Hinweis key={p} titel="Noch offen" wichtig>
+              {p}
+            </Hinweis>
+          ))}
+        </div>
+      )}
+      <Knopf art="primaer" gross disabled={laeuft} onClick={() => void exportieren()}>
+        {laeuft ? 'PDF wird erstellt …' : 'PDF erstellen'}
+      </Knopf>
+      {fehler && (
+        <div className="mt-3">
+          <Hinweis titel="PDF konnte nicht erstellt werden" wichtig>
+            {fehler}
+          </Hinweis>
+        </div>
+      )}
+    </Abschnitt>
   )
 }

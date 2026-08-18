@@ -53,7 +53,7 @@ describe('erzeugeAuditPdfDefinition — voller Rechenweg im Dokument', () => {
   it('enthält Kopf, Betrieb und Phase', () => {
     expect(text).toContain('Prozess-Audit — Ergebnis und Rechenweg')
     expect(text).toContain('Mustermann SHK')
-    expect(text).toContain('Baseline-Messung vom 17.08.2026')
+    expect(text).toContain('Erstmessung vom 17.08.2026')
   })
 
   it('druckt die Rohmesswerte ab (Nachrechenbarkeit)', () => {
@@ -70,7 +70,7 @@ describe('erzeugeAuditPdfDefinition — voller Rechenweg im Dokument', () => {
     expect(text).toContain(`16,0${NBSP}h`)
     expect(text).toContain(`960,00${NBSP}€`)
     expect(text).toContain(`768,00${NBSP}€`)
-    expect(text).toContain('Konservativ-Abschlag')
+    expect(text).toContain('Sicherheitsabschlag')
     expect(text).toContain('n=5, Einlernphase')
   })
 
@@ -110,8 +110,14 @@ describe('erzeugeAuditPdfDefinition — voller Rechenweg im Dokument', () => {
     expect(mitVergleich).toContain('Zielerreichung')
   })
 
-  it('fehlende Abschlags-Begründung wird sichtbar markiert, nicht verschwiegen', () => {
+  it('fehlende Abschlags-Begründung wird sachlich ausgewiesen, nicht verschwiegen', () => {
     const ohne = alsText(erzeugeAuditPdfDefinition({ ...audit, konservativBegruendung: '  ' }))
-    expect(ohne).toContain('FEHLT')
+    expect(ohne).toContain('nicht angegeben')
+  })
+
+  it('nennt den Sicherheitsabschlag als Prozentwert UND als Faktor', () => {
+    // Der Kunde versteht "20 %", der Steuerberater rechnet mit dem Faktor nach.
+    expect(text).toContain('Sicherheitsabschlag 20')
+    expect(text).toContain('Faktor 0,80')
   })
 })

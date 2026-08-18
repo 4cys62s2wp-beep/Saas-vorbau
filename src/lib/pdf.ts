@@ -10,7 +10,8 @@ import {
   formatiereStunden,
   formatiereZahl,
 } from './format'
-import { ABSENDER, ANGEBOT_HINWEISE, QUELLEN_ANNAHMEN, QUELLEN_PLATZHALTER } from './quellen'
+import { abschlagProzentAusFaktor } from './audit'
+import { ABSENDER, ANGEBOT_HINWEISE, QUELLEN_ANNAHMEN } from './quellen'
 
 /**
  * PDF mit VOLLEM Rechenweg: jede Zahl im Ergebnis muss sich aus den
@@ -48,7 +49,7 @@ export function erzeugeAuditPdfDefinition(
   inhalt.push(
     { text: 'Prozess-Audit — Ergebnis und Rechenweg', style: 'h1' },
     {
-      text: `${audit.betrieb} (${audit.gewerk}) — ${audit.phase === 'baseline' ? 'Baseline-Messung' : 'Nachmessung'} vom ${formatiereDatum(audit.datum)}`,
+      text: `${audit.betrieb}${audit.gewerk.trim() === '' ? '' : ` (${audit.gewerk})`} — ${audit.phase === 'baseline' ? 'Erstmessung' : 'Nachmessung'} vom ${formatiereDatum(audit.datum)}`,
       margin: [0, 2, 0, 12],
     },
     {
@@ -136,12 +137,12 @@ export function erzeugeAuditPdfDefinition(
     `Aufs Jahr: ${formatiereMinuten(k.ersparnisMinutenProMonat)} ÷ 60 × 12 Monate = ${formatiereStunden(k.ersparnisStundenProJahr)} pro Jahr`,
     `Bewertet mit internem Stundensatz: ${formatiereStunden(k.ersparnisStundenProJahr)} × ` +
       `${formatiereEuro(audit.stundensatzIntern)}/h = ${formatiereEuro(k.ersparnisEuroProJahrVorAbschlag)} pro Jahr (vor Abschlag)`,
-    `Konservativ-Abschlag: × ${formatiereZahl(audit.konservativFaktor, 2)} = ` +
-      `${formatiereEuro(k.ersparnisEuroProJahr)} pro Jahr`,
+    `Sicherheitsabschlag ${formatiereProzent(abschlagProzentAusFaktor(audit.konservativFaktor))} ` +
+      `(Faktor ${formatiereZahl(audit.konservativFaktor, 2)}): ${formatiereEuro(k.ersparnisEuroProJahr)} pro Jahr`,
   ]
   inhalt.push({ ol: rechenweg, margin: [0, 0, 0, 6] })
   inhalt.push({
-    text: `Begründung des Abschlags: ${audit.konservativBegruendung.trim() !== '' ? audit.konservativBegruendung : 'FEHLT — vor Versand ergänzen!'}`,
+    text: `Begründung des Abschlags: ${audit.konservativBegruendung.trim() !== '' ? audit.konservativBegruendung : '— nicht angegeben —'}`,
     italics: true,
     margin: [0, 0, 0, 10],
   })
@@ -176,7 +177,7 @@ export function erzeugeAuditPdfDefinition(
 
   // ── Preisband ───────────────────────────────────────────────────────────
   inhalt.push(
-    { text: 'Preisband (Anteil an der konservativ gerechneten Jahresersparnis)', style: 'h2', margin: [0, 4, 0, 4] },
+    { text: 'Preisrahmen (Anteil an der vorsichtig gerechneten Jahresersparnis)', style: 'h2', margin: [0, 4, 0, 4] },
     {
       table: {
         widths: ['*', '*', '*'],
@@ -233,36 +234,32 @@ export function erzeugeAuditPdfDefinition(
   }
 
   // ── Quellen-/Annahmenblock ──────────────────────────────────────────────
-  inhalt.push({ text: 'Quellen und Annahmen', style: 'h2', margin: [0, 8, 0, 4], pageBreak: undefined })
-  if (QUELLEN_ANNAHMEN.length === 0) {
-    inhalt.push({ text: QUELLEN_PLATZHALTER, style: 'klein' })
-  } else {
-    const qZeilen: TableCell[][] = [
-      [
-        { text: 'Annahme', style: 'th' },
-        { text: 'Quelle (Stand)', style: 'th' },
-        { text: 'Status', style: 'th' },
-      ],
-    ]
-    for (const q of QUELLEN_ANNAHMEN) {
-      qZeilen.push([
-        { text: `${q.thema}: ${q.aussage}`, style: 'klein' },
-        { text: `${q.quelle} (${q.stand})\n${q.url}`, style: 'klein' },
-        { text: q.status, style: 'klein' },
-      ])
-    }
-    inhalt.push({
-      table: { headerRows: 1, widths: ['*', 170, 70], body: qZeilen },
-      layout: 'lightHorizontalLines',
-    })
-    inhalt.push({
-      text:
-        'VERIFIZIERT = direkt aus der Primärquelle gegengelesen. TEILVERIFIZIERT = Primärquelle benannt, ' +
-        'Wert über Suchtreffer belegt. NICHT VERIFIZIERT = bewusst als Annahme gekennzeichnet, im Tool frei einstellbar.',
-      style: 'klein',
-      margin: [0, 6, 0, 0],
-    })
+  inhalt.push({ text: 'Quellen und Annahmen', style: 'h2', margin: [0, 8, 0, 4] })
+  const qZeilen: TableCell[][] = [
+    [
+      { text: 'Annahme', style: 'th' },
+      { text: 'Quelle (Stand)', style: 'th' },
+      { text: 'Prüfstand', style: 'th' },
+    ],
+  ]
+  for (const q of QUELLEN_ANNAHMEN) {
+    qZeilen.push([
+      { text: `${q.thema}: ${q.aussage}`, style: 'klein' },
+      { text: `${q.quelle} (${q.stand})\n${q.url}`, style: 'klein' },
+      { text: q.status, style: 'klein' },
+    ])
   }
+  inhalt.push({
+    table: { headerRows: 1, widths: ['*', 170, 70], body: qZeilen },
+    layout: 'lightHorizontalLines',
+  })
+  inhalt.push({
+    text:
+      'VERIFIZIERT = unmittelbar aus der Primärquelle gegengelesen. TEILVERIFIZIERT = Primärquelle benannt, ' +
+      'der Wert ist über Fundstellen belegt. NICHT VERIFIZIERT = ausdrücklich als Annahme gekennzeichnet.',
+    style: 'klein',
+    margin: [0, 6, 0, 0],
+  })
 
   return {
     info: {
@@ -272,10 +269,12 @@ export function erzeugeAuditPdfDefinition(
     pageMargins: [48, 48, 48, 56],
     defaultStyle: { font: 'Roboto', fontSize: 10, lineHeight: 1.25 },
     styles: {
-      h1: { fontSize: 16, bold: true },
-      h2: { fontSize: 12, bold: true },
-      th: { bold: true, fontSize: 8, color: '#334155' },
-      klein: { fontSize: 8, color: '#334155' },
+      // Ausschließlich Schwarz und Grau — das Dokument soll auch im
+      // Schwarz-Weiß-Ausdruck unverändert wirken.
+      h1: { fontSize: 16, bold: true, color: '#000000' },
+      h2: { fontSize: 12, bold: true, color: '#000000' },
+      th: { bold: true, fontSize: 8, color: '#000000' },
+      klein: { fontSize: 8, color: '#3c3c3c' },
     },
     footer: (aktuelleSeite: number, seitenGesamt: number) => ({
       columns: [

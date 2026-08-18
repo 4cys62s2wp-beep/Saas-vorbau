@@ -45,6 +45,11 @@ export function formatiereSekunden(wert: number): string {
   return `${formatiereZahl(wert, wert < 100 ? 1 : 0)}${NBSP}s`
 }
 
+/** Zählangabe mit richtiger Ein-/Mehrzahl: mehrzahl(1, 'Schritt', 'Schritte') → "1 Schritt". */
+export function mehrzahl(anzahl: number, einzahl: string, mehrzahlForm: string): string {
+  return `${formatiereZahl(anzahl)} ${anzahl === 1 ? einzahl : mehrzahlForm}`
+}
+
 /** ISO-Datum (JJJJ-MM-TT) → TT.MM.JJJJ für Briefe/PDF. */
 export function formatiereDatum(iso: string): string {
   const teile = iso.slice(0, 10).split('-')

@@ -3,292 +3,210 @@ import type { Audit, Prozess, Schritt } from '../types'
 import { neueId } from '../lib/storage'
 import { ausreisserIndizes } from '../lib/statistik'
 import { MIN_MESSUNGEN_WARNSCHWELLE } from '../lib/konstanten'
+import { formatiereSekunden, mehrzahl } from '../lib/format'
 import { Stoppuhr, formatiereStoppuhr } from './Stoppuhr'
+import { Abschnitt, Feld, Hinweis, Knopf, ListenKnopf, LoeschKnopf } from './ui'
 
 /**
- * Erfassungs-Ansicht (iPad, offline): Audit → Prozesse → Schritte → Messungen.
- * Große Touch-Targets, hoher Kontrast. Jede Aktion läuft über aktualisiereAudit
- * und wird damit sofort per Autosave in IndexedDB geschrieben.
+ * Erfassung vor Ort (iPad, ohne Internet).
+ *
+ * Der Ablauf ist bewusst als nummerierte Folge aufgebaut: Prozess wählen,
+ * Arbeitsschritt wählen, Zeit messen. Jede Änderung wird sofort gespeichert.
  */
 interface ErfassungProps {
-  audits: Audit[]
-  setAudits: (f: (alt: Audit[]) => Audit[]) => void
+  audit: Audit | null
   aktualisiereAudit: (id: string, f: (a: Audit) => Audit) => void
-  aktivesAuditId: string | null
-  setAktivesAuditId: (id: string | null) => void
 }
 
-const eingabeKlasse =
-  'min-h-14 w-full rounded-xl border-2 border-slate-400 bg-white px-4 text-lg text-slate-900'
-const primaerKnopf =
-  'min-h-14 rounded-xl bg-slate-800 px-6 text-lg font-bold text-white active:bg-slate-900 disabled:opacity-40'
+export function Erfassung({ audit, aktualisiereAudit }: ErfassungProps) {
+  const [prozessId, setProzessId] = useState<string | null>(null)
+  const [schrittId, setSchrittId] = useState<string | null>(null)
 
-export function Erfassung({
-  audits,
-  setAudits,
-  aktualisiereAudit,
-  aktivesAuditId,
-  setAktivesAuditId,
-}: ErfassungProps) {
-  const aktivesAudit = audits.find((a) => a.id === aktivesAuditId) ?? null
-  const [aktiverProzessId, setAktiverProzessId] = useState<string | null>(null)
-  const [aktiverSchrittId, setAktiverSchrittId] = useState<string | null>(null)
+  if (!audit) {
+    return (
+      <p className="border border-linie bg-papier p-4">
+        Oben einen Betrieb auswählen oder über <strong>Neuer Betrieb</strong> anlegen.
+      </p>
+    )
+  }
 
-  const aktiverProzess = aktivesAudit?.prozesse.find((p) => p.id === aktiverProzessId) ?? null
-  const aktiverSchritt = aktiverProzess?.schritte.find((s) => s.id === aktiverSchrittId) ?? null
+  const prozess = audit.prozesse.find((p) => p.id === prozessId) ?? null
+  const schritt = prozess?.schritte.find((s) => s.id === schrittId) ?? null
+
+  const setzeProzess = (id: string, f: (p: Prozess) => Prozess) => {
+    aktualisiereAudit(audit.id, (a) => ({
+      ...a,
+      prozesse: a.prozesse.map((p) => (p.id === id ? f(p) : p)),
+    }))
+  }
+
+  const setzeSchritt = (pId: string, sId: string, f: (s: Schritt) => Schritt) => {
+    setzeProzess(pId, (p) => ({
+      ...p,
+      schritte: p.schritte.map((s) => (s.id === sId ? f(s) : s)),
+    }))
+  }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <AuditWahl
-        audits={audits}
-        aktivesAudit={aktivesAudit}
-        setAudits={setAudits}
-        waehleAudit={(id) => {
-          setAktivesAuditId(id)
-          setAktiverProzessId(null)
-          setAktiverSchrittId(null)
+    <div className="flex flex-col gap-4">
+      <ProzessAbschnitt
+        audit={audit}
+        prozess={prozess}
+        aktualisiereAudit={aktualisiereAudit}
+        setzeProzess={setzeProzess}
+        waehle={(id) => {
+          setProzessId(id)
+          setSchrittId(null)
         }}
       />
 
-      {aktivesAudit && (
-        <ProzessListe
-          audit={aktivesAudit}
-          aktiverProzessId={aktiverProzessId}
-          aktualisiereAudit={aktualisiereAudit}
-          waehleProzess={(id) => {
-            setAktiverProzessId(id)
-            setAktiverSchrittId(null)
-          }}
+      {prozess && (
+        <SchrittAbschnitt
+          prozess={prozess}
+          schritt={schritt}
+          setzeProzess={setzeProzess}
+          setzeSchritt={setzeSchritt}
+          waehle={setSchrittId}
         />
       )}
 
-      {aktivesAudit && aktiverProzess && (
-        <SchrittListe
-          audit={aktivesAudit}
-          prozess={aktiverProzess}
-          aktiverSchrittId={aktiverSchrittId}
-          aktualisiereAudit={aktualisiereAudit}
-          waehleSchritt={setAktiverSchrittId}
-        />
-      )}
-
-      {aktivesAudit && aktiverProzess && aktiverSchritt && (
-        <MessBereich
-          audit={aktivesAudit}
-          prozess={aktiverProzess}
-          schritt={aktiverSchritt}
-          aktualisiereAudit={aktualisiereAudit}
+      {prozess && schritt && (
+        <MessAbschnitt
+          prozess={prozess}
+          schritt={schritt}
+          setzeSchritt={setzeSchritt}
         />
       )}
     </div>
   )
 }
 
-function AuditWahl({
-  audits,
-  aktivesAudit,
-  setAudits,
-  waehleAudit,
-}: {
-  audits: Audit[]
-  aktivesAudit: Audit | null
-  setAudits: (f: (alt: Audit[]) => Audit[]) => void
-  waehleAudit: (id: string) => void
-}) {
-  const [zeigeFormular, setZeigeFormular] = useState(audits.length === 0)
-  const [betrieb, setBetrieb] = useState('')
-  const [gewerk, setGewerk] = useState('')
-  const [phase, setPhase] = useState<'baseline' | 'nachmessung'>('baseline')
-
-  const anlegen = () => {
-    const neu: Audit = {
-      id: neueId(),
-      betrieb: betrieb.trim(),
-      gewerk: gewerk.trim(),
-      datum: new Date().toISOString().slice(0, 10),
-      phase,
-      // Kein Default-Stundensatz: 0 zwingt in der Kalkulation zur bewussten Eingabe.
-      stundensatzIntern: 0,
-      // Kein Default-Abschlag: 1 = „noch nicht festgelegt", Pflichtfeld in der Kalkulation.
-      konservativFaktor: 1,
-      konservativBegruendung: '',
-      prozesse: [],
-    }
-    setAudits((alt) => [...alt, neu])
-    waehleAudit(neu.id)
-    setBetrieb('')
-    setGewerk('')
-    setZeigeFormular(false)
-  }
-
-  return (
-    <section className="rounded-xl border-2 border-slate-300 bg-slate-50 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-bold text-slate-900">
-          {aktivesAudit
-            ? `${aktivesAudit.betrieb} — ${aktivesAudit.phase === 'baseline' ? 'Baseline' : 'Nachmessung'} (${aktivesAudit.datum})`
-            : 'Kein Audit gewählt'}
-        </h2>
-        <button
-          type="button"
-          className="min-h-12 rounded-xl border-2 border-slate-400 px-4 text-base font-semibold text-slate-700 active:bg-slate-100"
-          onClick={() => setZeigeFormular((z) => !z)}
-        >
-          {zeigeFormular ? 'Schließen' : 'Neu / Wechseln'}
-        </button>
-      </div>
-
-      {zeigeFormular && (
-        <div className="mt-4 flex flex-col gap-4">
-          {audits.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-semibold uppercase text-slate-500">Vorhandene Audits</span>
-              {audits.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  className="min-h-14 rounded-xl border-2 border-slate-400 bg-white px-4 text-left text-lg text-slate-900 active:bg-slate-100"
-                  onClick={() => waehleAudit(a.id)}
-                >
-                  {a.betrieb} ({a.gewerk}) — {a.phase === 'baseline' ? 'Baseline' : 'Nachmessung'},{' '}
-                  {a.datum}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="flex flex-col gap-3 border-t-2 border-slate-200 pt-4">
-            <span className="text-sm font-semibold uppercase text-slate-500">Neues Audit</span>
-            <input
-              className={eingabeKlasse}
-              placeholder="Betrieb (z. B. Mustermann SHK)"
-              value={betrieb}
-              onChange={(e) => setBetrieb(e.target.value)}
-            />
-            <input
-              className={eingabeKlasse}
-              placeholder="Gewerk (z. B. SHK, Elektro, Schreinerei)"
-              value={gewerk}
-              onChange={(e) => setGewerk(e.target.value)}
-            />
-            <div className="grid grid-cols-2 gap-3">
-              {(['baseline', 'nachmessung'] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPhase(p)}
-                  className={`min-h-14 rounded-xl border-2 text-lg font-semibold ${
-                    phase === p
-                      ? 'border-slate-800 bg-slate-800 text-white'
-                      : 'border-slate-400 bg-white text-slate-700'
-                  }`}
-                >
-                  {p === 'baseline' ? 'Baseline' : 'Nachmessung'}
-                </button>
-              ))}
-            </div>
-            <button type="button" className={primaerKnopf} disabled={betrieb.trim() === ''} onClick={anlegen}>
-              Audit anlegen
-            </button>
-          </div>
-        </div>
-      )}
-    </section>
-  )
-}
-
-function ProzessListe({
+function ProzessAbschnitt({
   audit,
-  aktiverProzessId,
+  prozess,
   aktualisiereAudit,
-  waehleProzess,
+  setzeProzess,
+  waehle,
 }: {
   audit: Audit
-  aktiverProzessId: string | null
-  aktualisiereAudit: (id: string, f: (a: Audit) => Audit) => void
-  waehleProzess: (id: string) => void
+  prozess: Prozess | null
+  aktualisiereAudit: ErfassungProps['aktualisiereAudit']
+  setzeProzess: (id: string, f: (p: Prozess) => Prozess) => void
+  waehle: (id: string | null) => void
 }) {
   const [name, setName] = useState('')
   const [haeufigkeit, setHaeufigkeit] = useState('')
 
+  const zahl = (s: string) => Number(s.replace(',', '.'))
+  const haeufigkeitOk = haeufigkeit.trim() !== '' && zahl(haeufigkeit) > 0
+
   const anlegen = () => {
-    const h = Number(haeufigkeit.replace(',', '.'))
     const neu: Prozess = {
       id: neueId(),
       name: name.trim(),
-      haeufigkeitProMonat: Number.isFinite(h) && h > 0 ? h : 0,
+      haeufigkeitProMonat: zahl(haeufigkeit),
       schritte: [],
     }
     aktualisiereAudit(audit.id, (a) => ({ ...a, prozesse: [...a.prozesse, neu] }))
-    waehleProzess(neu.id)
+    waehle(neu.id)
     setName('')
     setHaeufigkeit('')
   }
 
+  const loeschen = (id: string) => {
+    aktualisiereAudit(audit.id, (a) => ({ ...a, prozesse: a.prozesse.filter((p) => p.id !== id) }))
+    waehle(null)
+  }
+
   return (
-    <section className="rounded-xl border-2 border-slate-300 bg-white p-4">
-      <h3 className="text-lg font-bold text-slate-900">Prozesse</h3>
-      <div className="mt-3 flex flex-col gap-2">
+    <Abschnitt
+      nummer={1}
+      titel="Prozess"
+      hinweis="Ein Vorgang, der im Betrieb regelmäßig anfällt — zum Beispiel „Angebot schreiben“ oder „Stundenzettel erfassen“."
+    >
+      <div className="flex flex-col gap-2">
         {audit.prozesse.map((p) => (
-          <button
+          <ListenKnopf
             key={p.id}
-            type="button"
-            onClick={() => waehleProzess(p.id)}
-            className={`min-h-14 rounded-xl border-2 px-4 text-left text-lg ${
-              p.id === aktiverProzessId
-                ? 'border-slate-800 bg-slate-800 text-white'
-                : 'border-slate-400 bg-white text-slate-900 active:bg-slate-100'
-            }`}
-          >
-            {p.name}{' '}
-            <span className={p.id === aktiverProzessId ? 'text-slate-300' : 'text-slate-500'}>
-              — {p.haeufigkeitProMonat}×/Monat, {p.schritte.length} Schritt(e)
-            </span>
-          </button>
+            aktiv={p.id === prozess?.id}
+            titel={p.name}
+            zusatz={`${p.haeufigkeitProMonat.toLocaleString('de-DE')}× im Monat · ${mehrzahl(p.schritte.length, 'Arbeitsschritt', 'Arbeitsschritte')}`}
+            onClick={() => waehle(p.id)}
+          />
         ))}
         {audit.prozesse.length === 0 && (
-          <p className="text-slate-500">Noch keine Prozesse — unten anlegen.</p>
+          <p className="text-tinte-schwach">Noch kein Prozess erfasst.</p>
         )}
       </div>
-      <div className="mt-4 grid grid-cols-[1fr_auto_auto] gap-3">
-        <input
-          className={eingabeKlasse}
-          placeholder="Prozessname (z. B. Angebot erstellen)"
+
+      <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-linie pt-4">
+        <Feld
+          label="Neuer Prozess"
+          placeholder="z. B. Angebot schreiben"
           value={name}
+          breite="min-w-60 flex-1"
           onChange={(e) => setName(e.target.value)}
         />
-        <input
-          className={`${eingabeKlasse} w-28`}
-          placeholder="×/Monat"
+        <Feld
+          label="Wie oft im Monat?"
           inputMode="decimal"
+          placeholder="z. B. 12"
           value={haeufigkeit}
+          breite="w-44"
           onChange={(e) => setHaeufigkeit(e.target.value)}
         />
-        <button type="button" className={primaerKnopf} disabled={name.trim() === ''} onClick={anlegen}>
-          +
-        </button>
+        <Knopf art="primaer" disabled={name.trim() === '' || !haeufigkeitOk} onClick={anlegen}>
+          Hinzufügen
+        </Knopf>
       </div>
-      {haeufigkeit !== '' && !(Number(haeufigkeit.replace(',', '.')) > 0) && (
-        <p className="mt-2 text-sm font-semibold text-red-700">
-          Häufigkeit pro Monat muss eine Zahl &gt; 0 sein — sonst wird der Prozess mit 0 gerechnet.
+      {haeufigkeit.trim() !== '' && !haeufigkeitOk && (
+        <p className="mt-2 text-sm font-semibold">
+          Bitte eine Zahl größer als 0 eintragen — die Häufigkeit bestimmt die Hochrechnung aufs Jahr.
         </p>
       )}
-    </section>
+
+      {prozess && (
+        <div className="mt-4 border-t border-linie pt-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <Feld
+              label="Name ändern"
+              value={prozess.name}
+              breite="min-w-60 flex-1"
+              onChange={(e) => setzeProzess(prozess.id, (p) => ({ ...p, name: e.target.value }))}
+            />
+            <Feld
+              label="Wie oft im Monat?"
+              inputMode="decimal"
+              value={String(prozess.haeufigkeitProMonat).replace('.', ',')}
+              breite="w-44"
+              onChange={(e) => {
+                const v = zahl(e.target.value)
+                setzeProzess(prozess.id, (p) => ({
+                  ...p,
+                  haeufigkeitProMonat: Number.isFinite(v) && v >= 0 ? v : 0,
+                }))
+              }}
+            />
+            <LoeschKnopf was={`Prozess „${prozess.name}“`} onLoeschen={() => loeschen(prozess.id)} />
+          </div>
+        </div>
+      )}
+    </Abschnitt>
   )
 }
 
-function SchrittListe({
-  audit,
+function SchrittAbschnitt({
   prozess,
-  aktiverSchrittId,
-  aktualisiereAudit,
-  waehleSchritt,
+  schritt,
+  setzeProzess,
+  setzeSchritt,
+  waehle,
 }: {
-  audit: Audit
   prozess: Prozess
-  aktiverSchrittId: string | null
-  aktualisiereAudit: (id: string, f: (a: Audit) => Audit) => void
-  waehleSchritt: (id: string) => void
+  schritt: Schritt | null
+  setzeProzess: (id: string, f: (p: Prozess) => Prozess) => void
+  setzeSchritt: (pId: string, sId: string, f: (s: Schritt) => Schritt) => void
+  waehle: (id: string | null) => void
 }) {
   const [name, setName] = useState('')
 
@@ -297,156 +215,154 @@ function SchrittListe({
       id: neueId(),
       name: name.trim(),
       messungenSek: [],
-      // Konservative Defaults: nichts gilt als automatisierbar, bis es in der
-      // Kalkulation bewusst markiert wird.
+      // Nichts gilt als automatisierbar, bis es in der Kalkulation
+      // bewusst so bewertet wird.
       automatisierbar: false,
       restaufwandProzent: 100,
     }
-    aktualisiereAudit(audit.id, (a) => ({
-      ...a,
-      prozesse: a.prozesse.map((p) =>
-        p.id === prozess.id ? { ...p, schritte: [...p.schritte, neu] } : p,
-      ),
-    }))
-    waehleSchritt(neu.id)
+    setzeProzess(prozess.id, (p) => ({ ...p, schritte: [...p.schritte, neu] }))
+    waehle(neu.id)
     setName('')
   }
 
+  const loeschen = (id: string) => {
+    setzeProzess(prozess.id, (p) => ({ ...p, schritte: p.schritte.filter((s) => s.id !== id) }))
+    waehle(null)
+  }
+
   return (
-    <section className="rounded-xl border-2 border-slate-300 bg-white p-4">
-      <h3 className="text-lg font-bold text-slate-900">Schritte in „{prozess.name}"</h3>
-      <div className="mt-3 flex flex-col gap-2">
+    <Abschnitt
+      nummer={2}
+      titel={`Arbeitsschritte in „${prozess.name}“`}
+      hinweis="Den Prozess in einzelne Handgriffe zerlegen. Je feiner, desto genauer lässt sich später sagen, welcher Teil sich automatisieren lässt."
+    >
+      <div className="flex flex-col gap-2">
         {prozess.schritte.map((s) => {
           const zuWenig = s.messungenSek.length < MIN_MESSUNGEN_WARNSCHWELLE
           return (
-            <button
+            <ListenKnopf
               key={s.id}
-              type="button"
-              onClick={() => waehleSchritt(s.id)}
-              className={`min-h-14 rounded-xl border-2 px-4 text-left text-lg ${
-                s.id === aktiverSchrittId
-                  ? 'border-slate-800 bg-slate-800 text-white'
-                  : 'border-slate-400 bg-white text-slate-900 active:bg-slate-100'
-              }`}
-            >
-              {s.name}{' '}
-              <span
-                className={
-                  s.id === aktiverSchrittId
-                    ? 'text-slate-300'
-                    : zuWenig
-                      ? 'font-semibold text-amber-700'
-                      : 'text-slate-500'
-                }
-              >
-                — {s.messungenSek.length} Messung(en)
-                {zuWenig ? ` (< ${MIN_MESSUNGEN_WARNSCHWELLE})` : ''}
-              </span>
-            </button>
+              aktiv={s.id === schritt?.id}
+              titel={s.name}
+              zusatz={
+                s.messungenSek.length === 0
+                  ? 'noch nicht gemessen'
+                  : `${mehrzahl(s.messungenSek.length, 'Messung', 'Messungen')}${zuWenig ? ' — zu wenige' : ''}`
+              }
+              onClick={() => waehle(s.id)}
+            />
           )
         })}
         {prozess.schritte.length === 0 && (
-          <p className="text-slate-500">Noch keine Schritte — unten per Tap anlegen.</p>
+          <p className="text-tinte-schwach">Noch kein Arbeitsschritt erfasst.</p>
         )}
       </div>
-      <div className="mt-4 grid grid-cols-[1fr_auto] gap-3">
-        <input
-          className={eingabeKlasse}
-          placeholder="Schrittname (z. B. Aufmaß ins Angebot übertragen)"
+
+      <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-linie pt-4">
+        <Feld
+          label="Neuer Arbeitsschritt"
+          placeholder="z. B. Aufmaß ins Angebot übertragen"
           value={name}
+          breite="min-w-60 flex-1"
           onChange={(e) => setName(e.target.value)}
         />
-        <button type="button" className={primaerKnopf} disabled={name.trim() === ''} onClick={anlegen}>
-          +
-        </button>
+        <Knopf art="primaer" disabled={name.trim() === ''} onClick={anlegen}>
+          Hinzufügen
+        </Knopf>
       </div>
-    </section>
+
+      {schritt && (
+        <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-linie pt-4">
+          <Feld
+            label="Name ändern"
+            value={schritt.name}
+            breite="min-w-60 flex-1"
+            onChange={(e) =>
+              setzeSchritt(prozess.id, schritt.id, (s) => ({ ...s, name: e.target.value }))
+            }
+          />
+          <LoeschKnopf
+            was={`Arbeitsschritt „${schritt.name}“ mit allen Zeiten`}
+            onLoeschen={() => loeschen(schritt.id)}
+          />
+        </div>
+      )}
+    </Abschnitt>
   )
 }
 
-function MessBereich({
-  audit,
+function MessAbschnitt({
   prozess,
   schritt,
-  aktualisiereAudit,
+  setzeSchritt,
 }: {
-  audit: Audit
   prozess: Prozess
   schritt: Schritt
-  aktualisiereAudit: (id: string, f: (a: Audit) => Audit) => void
+  setzeSchritt: (pId: string, sId: string, f: (s: Schritt) => Schritt) => void
 }) {
   const setzeMessungen = (f: (alt: number[]) => number[]) => {
-    aktualisiereAudit(audit.id, (a) => ({
-      ...a,
-      prozesse: a.prozesse.map((p) =>
-        p.id === prozess.id
-          ? {
-              ...p,
-              schritte: p.schritte.map((s) =>
-                s.id === schritt.id ? { ...s, messungenSek: f(s.messungenSek) } : s,
-              ),
-            }
-          : p,
-      ),
-    }))
+    setzeSchritt(prozess.id, schritt.id, (s) => ({ ...s, messungenSek: f(s.messungenSek) }))
   }
 
-  const ausreisser = new Set(ausreisserIndizes(schritt.messungenSek))
-  const zuWenig = schritt.messungenSek.length < MIN_MESSUNGEN_WARNSCHWELLE
+  const auffaellig = new Set(ausreisserIndizes(schritt.messungenSek))
+  const fehlend = MIN_MESSUNGEN_WARNSCHWELLE - schritt.messungenSek.length
 
   return (
-    <section className="rounded-xl border-2 border-slate-800 bg-slate-50 p-4">
-      <h3 className="text-lg font-bold text-slate-900">Messen: „{schritt.name}"</h3>
-
-      <div className="mt-3">
-        <Stoppuhr onMessung={(sek) => setzeMessungen((alt) => [...alt, sek])} />
-      </div>
-
-      {zuWenig && (
-        <p className="mt-3 rounded-lg bg-amber-100 p-3 text-base font-semibold text-amber-900">
-          Erst {schritt.messungenSek.length} von mindestens {MIN_MESSUNGEN_WARNSCHWELLE} Messungen —
-          unterhalb dieser Schwelle ist die Aussage statistisch nicht belastbar (siehe QUELLEN.md,
-          Messreihen).
-        </p>
-      )}
+    <Abschnitt
+      nummer={3}
+      titel={`Zeit messen: „${schritt.name}“`}
+      hinweis="Den Arbeitsschritt mehrmals messen. Gewertet wird später der mittlere Wert (Median) — einzelne Ausreißer verfälschen das Ergebnis dadurch nicht."
+    >
+      <Stoppuhr onMessung={(sek) => setzeMessungen((alt) => [...alt, sek])} />
 
       <div className="mt-4">
-        <span className="text-sm font-semibold uppercase text-slate-500">
-          Messungen (Tap zum Löschen)
-        </span>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {schritt.messungenSek.map((m, i) => (
-            <button
-              key={`${i}-${m}`}
-              type="button"
-              onClick={() => {
-                if (window.confirm(`Messung ${i + 1} (${formatiereStoppuhr(m)}) löschen?`)) {
-                  setzeMessungen((alt) => alt.filter((_, j) => j !== i))
-                }
-              }}
-              className={`min-h-12 rounded-lg border-2 px-3 font-mono text-lg tabular-nums ${
-                ausreisser.has(i)
-                  ? 'border-red-700 bg-red-50 text-red-800'
-                  : 'border-slate-400 bg-white text-slate-900'
-              }`}
-              title={ausreisser.has(i) ? 'Auffälliger Wert (Tukey-Zaun)' : undefined}
-            >
-              {formatiereStoppuhr(m)}
-              {ausreisser.has(i) ? ' ⚠' : ''}
-            </button>
-          ))}
-          {schritt.messungenSek.length === 0 && (
-            <span className="text-slate-500">Noch keine Messungen.</span>
-          )}
-        </div>
-        {ausreisser.size > 0 && (
-          <p className="mt-2 text-sm text-red-800">
-            ⚠ = auffälliger Wert (außerhalb der Tukey-Zäune). Nur löschen, wenn es einen
-            dokumentierbaren Sondereinfluss gab (Telefonat, Unterbrechung …) — sonst stehen lassen;
-            der Median bleibt davon weitgehend unberührt.
-          </p>
+        {fehlend > 0 ? (
+          <Hinweis titel="Noch nicht aussagekräftig" wichtig>
+            {schritt.messungenSek.length === 0
+              ? `Noch keine Messung. Mindestens ${MIN_MESSUNGEN_WARNSCHWELLE} Messungen einplanen.`
+              : `${schritt.messungenSek.length} von ${MIN_MESSUNGEN_WARNSCHWELLE} Messungen. Noch ${mehrzahl(fehlend, 'Messung', 'Messungen')}, damit der Wert belastbar ist.`}
+          </Hinweis>
+        ) : (
+          <Hinweis titel="Messreihe ausreichend">
+            {mehrzahl(schritt.messungenSek.length, 'Messung', 'Messungen')} erfasst.
+          </Hinweis>
         )}
       </div>
-    </section>
+
+      {schritt.messungenSek.length > 0 && (
+        <div className="mt-4">
+          <p className="text-sm font-semibold">Gemessene Zeiten</p>
+          <p className="text-sm text-tinte-schwach">
+            Antippen, um eine Messung zu entfernen — etwa wenn dazwischen das Telefon klingelte.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {schritt.messungenSek.map((m, i) => (
+              <button
+                key={`${i}-${m}`}
+                type="button"
+                onClick={() => setzeMessungen((alt) => alt.filter((_, j) => j !== i))}
+                className={`zahl min-h-12 border px-3 text-lg ${
+                  auffaellig.has(i) ? 'border-tinte border-2 font-bold' : 'border-linie'
+                }`}
+              >
+                {formatiereStoppuhr(m)}
+                {auffaellig.has(i) ? ' *' : ''}
+              </button>
+            ))}
+          </div>
+          {auffaellig.size > 0 && (
+            <p className="mt-2 text-sm">
+              <strong>*</strong> weicht deutlich von den übrigen Messungen ab. Nur entfernen, wenn es
+              dafür einen bekannten Grund gab (Unterbrechung, Störung). Sonst stehen lassen — auf den
+              Median wirkt sich ein einzelner Ausreißer kaum aus.
+            </p>
+          )}
+          <p className="mt-2 text-sm text-tinte-schwach">
+            Kürzeste {formatiereSekunden(Math.min(...schritt.messungenSek))}, längste{' '}
+            {formatiereSekunden(Math.max(...schritt.messungenSek))}
+          </p>
+        </div>
+      )}
+    </Abschnitt>
   )
 }
