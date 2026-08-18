@@ -2,10 +2,11 @@
 
 **In einem Satz:** Fertig und geprüft. Nach der Umstellung auf die
 Schwarz-Weiß-Oberfläche habe ich das Programm noch einmal gezielt auf Fehler
-durchgesehen und dabei sechs echte gefunden und behoben — darunter zwei, die
-das Angebot verfälscht oder das Programm auf dem iPad unbrauchbar gemacht
-hätten. 94 Tests der Rechenlogik und 35 Prüfungen im echten Browser laufen
-durch, einschließlich PDF-Erstellung und Sicherungsdatei.
+durchgesehen und dabei sieben echte gefunden und behoben — darunter drei, die
+falsche Zahlen ins Angebot gebracht oder das Programm auf dem iPad unbrauchbar
+gemacht hätten. 98 Tests der Rechenlogik und 39 Prüfungen im echten Browser
+laufen durch; abgedeckt ist der vollständige Methodenzyklus vom Messen über
+das Angebot bis zum Nachweis-PDF nach der Nachmessung.
 
 ## Was du als Erstes tun solltest
 1. `./RUNME.sh` laufen lassen (installieren, prüfen, testen, bauen).
@@ -33,6 +34,16 @@ durch, einschließlich PDF-Erstellung und Sicherungsdatei.
    Rückfrage mit Angabe der betroffenen Betriebe.
 6. **Fehler beim Speichern blieben unbemerkt**, ebenso ein nicht lesbarer
    Gerätespeicher (die Anwendung hing dann dauerhaft im Ladezustand).
+7. **Die Stoppuhr hing nicht am Arbeitsschritt.** Lief die Uhr und man
+   wechselte den Schritt, wurde die Zeit beim Speichern dem *neuen* Schritt
+   zugeschlagen — eine falsche Zahl, die niemandem auffällt, weil sie
+   plausibel aussieht. Beim Audit vor Ort wechselt man ständig. Ein Wechsel
+   bricht die laufende Messung jetzt ab, und der Hinweistext sagt das.
+
+Aufgeräumt: nie verwendete Funktion `mittelwert`, zwei nie gesetzte Schalter,
+eine ungenutzte Knopf-Variante und ein ungenutztes Farb-Token entfernt; die
+Eingabeprüfung des Stundensatzrechners aus der Oberfläche in eine geprüfte
+Funktion gezogen; die Bewertungstabelle als eigene Komponente ausgelagert.
 
 Kleinere Korrekturen: Warnung bei Häufigkeit 0, Platzhalter statt leerer
 Namen, leeres Datum wird nicht übernommen, kein leeres Tabellengerüst im PDF
@@ -45,11 +56,13 @@ fest verdrahteter Browser-Pfad) — er läuft jetzt auch auf deinem Mac:
 `npm run test:browser`.
 
 ## Fertig — alles hier ausgeführt, nicht nur geschrieben
-**Geprüft:** `tsc` ohne Beanstandung · 94 Tests grün · `vite build` inklusive
-Offline-Fähigkeit · 35 Browser-Prüfungen grün (Betrieb anlegen, messen,
+**Geprüft:** `tsc` ohne Beanstandung · 98 Tests grün · `vite build` inklusive
+Offline-Fähigkeit · 39 Browser-Prüfungen grün, sowohl im gebauten Stand als
+auch im Entwicklungsmodus (Betrieb anlegen, messen, Uhr am Arbeitsschritt,
 umbenennen, löschen, Neustart, Zahleneingabe, Stundensatz rechnen, bewerten,
 Abschlag, PDF mit gültiger Signatur, Sicherungsdatei schreiben **und
-einlesen**, Nachmessung, Vergleich).
+einlesen**, Nachmessung, Vergleich, Nachweis-PDF). `RUNME.sh` einmal
+vollständig durchlaufen.
 
 - **Rechenlogik:** `types.ts`, `lib/statistik.ts`, `lib/kennzahlen.ts`,
   `lib/stundensatz.ts`, `lib/audit.ts`, `lib/zahlen.ts`, `lib/format.ts`,
@@ -59,7 +72,7 @@ einlesen**, Nachmessung, Vergleich).
 - **PDF:** `lib/pdf.ts` — Messwerte, Dauer je Durchlauf, vollständiger
   Rechenweg, Stundensatz-Herleitung, Preisrahmen, Vergleich, Quellenanhang ab
   neuer Seite. Ein Test prüft jedes Zeichen gegen die eingebettete Schrift.
-- **Tests:** zehn Dateien mit 94 Tests, `scripts/smoke.mjs` mit 35 Prüfungen
+- **Tests:** zehn Dateien mit 98 Tests, `scripts/smoke.mjs` mit 39 Prüfungen
 - **Unterlagen:** QUELLEN.md (11 Themen), README.md, ENTSCHEIDUNGEN.md (E1–E11),
   OPEN.md (O1–O9), RUNME.sh
 
