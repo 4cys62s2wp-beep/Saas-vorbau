@@ -25,8 +25,8 @@ echo "== 5/5 Produktions-Build =="
 npm run build
 
 echo "== optional: Browser-Smoke-Test (kompletter Durchlauf inkl. PDF-Download) =="
-echo "   Voraussetzung: npm i -D playwright-core && npx playwright install chromium"
-echo "   Dann in zwei Terminals:  npm run preview   /   node scripts/smoke.mjs"
+echo "   Voraussetzung (einmalig): npx playwright install chromium"
+echo "   Dann in zwei Terminals:  npm run preview   /   npm run test:browser"
 echo "   (Läuft nicht automatisch mit, weil er einen laufenden Server und einen Browser braucht.)"
 
 echo

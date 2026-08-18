@@ -267,6 +267,9 @@ function BewertungsAbschnitt({
                         <td className="zahl py-2 pr-3">{formatiereMinuten(sk.istMinutenProMonat)}</td>
                         <td className="py-2 pr-3">
                           <Knopf
+                            aria-label={`${sk.name}: automatisierbar ${
+                              schritt.automatisierbar ? 'ja' : 'nein'
+                            }`}
                             aktiv={schritt.automatisierbar}
                             onClick={() =>
                               setzeSchritt(pk.prozessId, sk.schrittId, (s) => ({

@@ -3,9 +3,11 @@
  * ersten Messung bis zum fertigen PDF, einschließlich Ändern, Löschen und
  * Nachmessung.
  *
- * Voraussetzung: die gebaute Anwendung läuft (npm run build && npm run preview).
+ * Voraussetzung: die gebaute Anwendung läuft (npm run build && npm run preview)
+ *                und der Browser ist eingerichtet (npx playwright install chromium).
  * Aufruf:        node scripts/smoke.mjs [http://localhost:4173]
  */
+import { existsSync } from 'node:fs'
 import { chromium } from 'playwright-core'
 
 const adresse = process.argv[2] ?? 'http://localhost:4173'
@@ -22,7 +24,22 @@ const pruefe = (bedingung, text) => {
   }
 }
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
+// In der Entwicklungsumgebung liegt der Browser an fester Stelle; auf einem
+// normalen Rechner findet Playwright ihn selbst (nach „npx playwright install chromium“).
+const vorinstalliert = '/opt/pw-browsers/chromium'
+let browser
+try {
+  browser = await chromium.launch(
+    existsSync(vorinstalliert) ? { executablePath: vorinstalliert } : {},
+  )
+} catch (fehler) {
+  console.error(
+    'Der Browser konnte nicht gestartet werden. Einmalig einrichten mit:\n' +
+      '  npx playwright install chromium\n\n' +
+      String(fehler),
+  )
+  process.exit(2)
+}
 const seite = await browser.newPage({ viewport: { width: 1200, height: 1400 } })
 seite.on('pageerror', (e) => fehler.push('Javascript-Fehler: ' + e.message))
 

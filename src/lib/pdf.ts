@@ -295,6 +295,8 @@ export function erzeugeAuditPdfDefinition(
   return {
     info: {
       title: `Prozess-Audit ${audit.betrieb} — ${formatiereDatum(audit.datum)}`,
+      ...(absender.name.trim() === '' ? {} : { author: absender.name.trim() }),
+      subject: 'Gemessene Prozesszeiten, Rechenweg und Preisrahmen',
     },
     pageSize: 'A4',
     pageMargins: [48, 48, 48, 56],
