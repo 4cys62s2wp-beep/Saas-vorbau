@@ -3,6 +3,7 @@ import { AuditLeiste } from './components/AuditLeiste'
 import { Erfassung } from './components/Erfassung'
 import { Kalkulation } from './components/Kalkulation'
 import { Hinweis, Knopf } from './components/ui'
+import type { AuditExport } from './types'
 import { parseImport, serialisiereExport } from './lib/exportImport'
 import { formatiereDatum } from './lib/format'
 import { ladeLetztenExport, merkeExport } from './lib/storage'
@@ -13,12 +14,39 @@ type Ansicht = 'messen' | 'auswerten'
 /** Nach so vielen Tagen ohne Sicherung wird daran erinnert (Begründung: QUELLEN.md, Thema 9). */
 const ERINNERUNG_NACH_TAGEN = 1
 
+const ANSICHT_SCHLUESSEL = 'prozess-audit:ansicht'
+
+/**
+ * Die zuletzt benutzte Ansicht wird gemerkt: Am Rechner wird ausgewertet, auf
+ * dem iPad gemessen — nach einem Neustart soll man dort weitermachen, wo man
+ * war, und nicht jedes Mal umschalten müssen.
+ */
+function ladeAnsicht(): Ansicht {
+  try {
+    return localStorage.getItem(ANSICHT_SCHLUESSEL) === 'auswerten' ? 'auswerten' : 'messen'
+  } catch {
+    return 'messen'
+  }
+}
+
 export default function App() {
-  const { geladen, audits, setAudits, aktualisiereAudit } = useAudits()
-  const [ansicht, setAnsicht] = useState<Ansicht>('messen')
+  const { geladen, audits, setAudits, aktualisiereAudit, speicherFehler } = useAudits()
+  const [ansicht, setAnsichtIntern] = useState<Ansicht>(ladeAnsicht)
+
+  const setAnsicht = (neu: Ansicht) => {
+    setAnsichtIntern(neu)
+    try {
+      localStorage.setItem(ANSICHT_SCHLUESSEL, neu)
+    } catch {
+      // Ohne gemerkte Ansicht funktioniert alles weiter — kein Grund zu stören.
+    }
+  }
   const [aktivesAuditId, setAktivesAuditId] = useState<string | null>(null)
   const [letzterExport, setLetzterExport] = useState<string | null>(null)
   const [meldung, setMeldung] = useState<string | null>(null)
+  const [importAnfrage, setImportAnfrage] = useState<
+    { daten: AuditExport; ersetzt: string[] } | null
+  >(null)
   const dateiInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -49,19 +77,32 @@ export default function App() {
     setMeldung('Sicherungsdatei wurde erstellt.')
   }
 
+  const uebernehmen = (daten: AuditExport) => {
+    setAudits((alt) => {
+      const ids = new Set(daten.audits.map((a) => a.id))
+      // Gleiche Kennung ersetzt den vorhandenen Stand, alles andere kommt hinzu.
+      return [...alt.filter((a) => !ids.has(a.id)), ...daten.audits]
+    })
+    const ersteId = daten.audits[0]?.id
+    if (ersteId) setAktivesAuditId(ersteId)
+    setImportAnfrage(null)
+    setMeldung(
+      `${daten.audits.length} Messung${daten.audits.length === 1 ? '' : 'en'} eingelesen (Stand ${formatiereDatum(daten.exportiertAm)}).`,
+    )
+  }
+
   const einlesen = async (datei: File) => {
     try {
       const daten = parseImport(await datei.text())
-      setAudits((alt) => {
-        const ids = new Set(daten.audits.map((a) => a.id))
-        // Gleiche Kennung ersetzt den vorhandenen Stand, alles andere kommt hinzu.
-        return [...alt.filter((a) => !ids.has(a.id)), ...daten.audits]
-      })
-      const ersteId = daten.audits[0]?.id
-      if (ersteId) setAktivesAuditId(ersteId)
-      setMeldung(
-        `${daten.audits.length} Messung${daten.audits.length === 1 ? '' : 'en'} eingelesen (Stand ${formatiereDatum(daten.exportiertAm)}).`,
-      )
+      const vorhandene = new Set(audits.map((a) => a.id))
+      const ersetzt = daten.audits.filter((a) => vorhandene.has(a.id))
+      if (ersetzt.length > 0) {
+        // Nicht wortlos überschreiben: Eine ältere Datei würde sonst die am
+        // Rechner vorgenommene Bewertung zunichtemachen.
+        setImportAnfrage({ daten, ersetzt: ersetzt.map((a) => a.betrieb) })
+        return
+      }
+      uebernehmen(daten)
     } catch (fehler) {
       setMeldung(
         `Die Datei konnte nicht eingelesen werden: ${fehler instanceof Error ? fehler.message : String(fehler)}`,
@@ -126,6 +167,38 @@ export default function App() {
       </header>
 
       <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4">
+        {speicherFehler && (
+          <div className="border-2 border-tinte bg-papier px-4 py-3">
+            <p className="font-bold">Achtung: Die Daten konnten nicht gespeichert werden.</p>
+            <p className="mt-1 text-sm">
+              Zuletzt gemeldet: {speicherFehler}. Bitte jetzt über <strong>Daten sichern</strong>{' '}
+              eine Datei ablegen — sonst gehen die Messungen beim Schließen verloren. Häufigste
+              Ursache ist ein voller Gerätespeicher.
+            </p>
+          </div>
+        )}
+
+        {importAnfrage && (
+          <div className="border-2 border-tinte bg-papier px-4 py-3">
+            <p className="font-bold">
+              Vorhandene Messungen werden durch den Stand aus der Datei ersetzt.
+            </p>
+            <p className="mt-1 text-sm">
+              Die Datei (Stand {formatiereDatum(importAnfrage.daten.exportiertAm)}) enthält{' '}
+              {importAnfrage.daten.audits.length} Messung
+              {importAnfrage.daten.audits.length === 1 ? '' : 'en'}. Davon {importAnfrage.ersetzt.length}{' '}
+              bereits vorhanden: {[...new Set(importAnfrage.ersetzt)].join(', ')}. Am Rechner
+              vorgenommene Bewertungen dieser Messungen gehen dabei verloren.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Knopf art="primaer" onClick={() => uebernehmen(importAnfrage.daten)}>
+                Ersetzen
+              </Knopf>
+              <Knopf onClick={() => setImportAnfrage(null)}>Abbrechen</Knopf>
+            </div>
+          </div>
+        )}
+
         {meldung && (
           <div className="flex items-start gap-3 border border-tinte bg-papier px-4 py-3">
             <p className="flex-1">{meldung}</p>

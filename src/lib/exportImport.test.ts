@@ -37,6 +37,42 @@ describe('Export → Import Roundtrip', () => {
     expect(zurueck.exportiertAm).toBe('2026-08-17T12:00:00.000Z')
     expect(zurueck.audits).toEqual([beispielAudit])
   })
+
+  it('erhält die Herleitung des Stundensatzes — sie ist der Rechenweg im PDF', () => {
+    const mitHerleitung: Audit = {
+      ...beispielAudit,
+      stundensatzHerleitung: {
+        bruttoJahreslohn: 45_000,
+        lohnnebenkostenProzent: 24,
+        gemeinkostenProzent: 40,
+        produktiveStundenProJahr: 1_455,
+      },
+    }
+    const zurueck = parseImport(serialisiereExport([mitHerleitung], 'x')).audits[0]!
+    expect(zurueck.stundensatzHerleitung).toEqual(mitHerleitung.stundensatzHerleitung)
+    expect(zurueck).toEqual(mitHerleitung)
+  })
+
+  it('kommt ohne Herleitung aus (sie ist freiwillig)', () => {
+    const zurueck = parseImport(serialisiereExport([beispielAudit], 'x')).audits[0]!
+    expect(zurueck.stundensatzHerleitung).toBeUndefined()
+  })
+
+  it('weist eine unvollständige Herleitung ab, statt halbe Angaben zu übernehmen', () => {
+    const kaputt = JSON.parse(serialisiereExport([beispielAudit], 'x')) as never as {
+      audits: Record<string, unknown>[]
+    }
+    kaputt.audits[0]!['stundensatzHerleitung'] = { bruttoJahreslohn: 45_000 }
+    expect(() => parseImport(JSON.stringify(kaputt))).toThrow(/lohnnebenkostenProzent/)
+  })
+
+  it('zweimaliges Einlesen derselben Datei erzeugt keine Doppel', () => {
+    // Die Anwendung ersetzt Datensätze mit gleicher Kennung — hier wird geprüft,
+    // dass die Kennungen dafür stabil bleiben.
+    const einmal = parseImport(serialisiereExport([beispielAudit], 'x')).audits
+    const zweimal = parseImport(serialisiereExport(einmal, 'x')).audits
+    expect(zweimal.map((a) => a.id)).toEqual([beispielAudit.id])
+  })
 })
 
 describe('parseImport weist kaputte Dateien mit klarer Meldung ab', () => {

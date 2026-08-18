@@ -5,7 +5,8 @@ import { ausreisserIndizes } from '../lib/statistik'
 import { MIN_MESSUNGEN_WARNSCHWELLE } from '../lib/konstanten'
 import { formatiereSekunden, mehrzahl } from '../lib/format'
 import { Stoppuhr, formatiereStoppuhr } from './Stoppuhr'
-import { Abschnitt, Feld, Hinweis, Knopf, ListenKnopf, LoeschKnopf } from './ui'
+import { leseZahlNichtNegativ } from '../lib/zahlen'
+import { Abschnitt, Feld, Hinweis, Knopf, ListenKnopf, LoeschKnopf, ZahlFeld } from './ui'
 
 /**
  * Erfassung vor Ort (iPad, ohne Internet).
@@ -97,14 +98,15 @@ function ProzessAbschnitt({
   const [name, setName] = useState('')
   const [haeufigkeit, setHaeufigkeit] = useState('')
 
-  const zahl = (s: string) => Number(s.replace(',', '.'))
-  const haeufigkeitOk = haeufigkeit.trim() !== '' && zahl(haeufigkeit) > 0
+  const gelesen = leseZahlNichtNegativ(haeufigkeit)
+  const haeufigkeitOk = gelesen !== null && gelesen > 0
 
   const anlegen = () => {
+    if (!haeufigkeitOk) return
     const neu: Prozess = {
       id: neueId(),
       name: name.trim(),
-      haeufigkeitProMonat: zahl(haeufigkeit),
+      haeufigkeitProMonat: gelesen,
       schritte: [],
     }
     aktualisiereAudit(audit.id, (a) => ({ ...a, prozesse: [...a.prozesse, neu] }))
@@ -155,6 +157,7 @@ function ProzessAbschnitt({
           breite="w-44"
           onChange={(e) => setHaeufigkeit(e.target.value)}
         />
+
         <Knopf art="primaer" disabled={name.trim() === '' || !haeufigkeitOk} onClick={anlegen}>
           Hinzufügen
         </Knopf>
@@ -174,18 +177,14 @@ function ProzessAbschnitt({
               breite="min-w-60 flex-1"
               onChange={(e) => setzeProzess(prozess.id, (p) => ({ ...p, name: e.target.value }))}
             />
-            <Feld
+            <ZahlFeld
               label="Wie oft im Monat?"
-              inputMode="decimal"
-              value={String(prozess.haeufigkeitProMonat).replace('.', ',')}
+              wert={prozess.haeufigkeitProMonat}
+              leerWert={0}
               breite="w-44"
-              onChange={(e) => {
-                const v = zahl(e.target.value)
-                setzeProzess(prozess.id, (p) => ({
-                  ...p,
-                  haeufigkeitProMonat: Number.isFinite(v) && v >= 0 ? v : 0,
-                }))
-              }}
+              onWert={(v) =>
+                setzeProzess(prozess.id, (p) => ({ ...p, haeufigkeitProMonat: v ?? 0 }))
+              }
             />
             <LoeschKnopf was={`Prozess „${prozess.name}“`} onLoeschen={() => loeschen(prozess.id)} />
           </div>

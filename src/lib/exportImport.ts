@@ -1,4 +1,4 @@
-import type { Audit, AuditExport, Phase, Prozess, Schritt } from '../types'
+import type { Audit, AuditExport, Phase, Prozess, Schritt, StundensatzEingaben } from '../types'
 
 /**
  * JSON-Export/-Import für den Transfer iPad → Mac.
@@ -75,6 +75,32 @@ function parseProzess(x: unknown, kontext: string): Prozess {
   }
 }
 
+/**
+ * Die Herleitung des Stundensatzes ist freiwillig — fehlt sie, ist das kein
+ * Fehler. Ist sie da, muss sie vollständig sein, damit im PDF kein halber
+ * Rechenweg steht.
+ */
+function parseHerleitung(x: unknown, kontext: string): StundensatzEingaben | undefined {
+  if (x === undefined || x === null) return undefined
+  if (!istObjekt(x)) throw new ImportFehler(`${kontext}: stundensatzHerleitung ist kein Objekt`)
+  const felder = [
+    'bruttoJahreslohn',
+    'lohnnebenkostenProzent',
+    'gemeinkostenProzent',
+    'produktiveStundenProJahr',
+  ] as const
+  const werte = {} as Record<(typeof felder)[number], number>
+  for (const feld of felder) {
+    const wert = pflichtZahl(x, feld, `${kontext}, Stundensatz-Herleitung`)
+    if (wert < 0) throw new ImportFehler(`${kontext}: ${feld} darf nicht negativ sein`)
+    werte[feld] = wert
+  }
+  if (werte.produktiveStundenProJahr <= 0) {
+    throw new ImportFehler(`${kontext}: produktiveStundenProJahr muss größer als 0 sein`)
+  }
+  return werte
+}
+
 function parseAudit(x: unknown, kontext: string): Audit {
   if (!istObjekt(x)) throw new ImportFehler(`${kontext}: Audit ist kein Objekt`)
   const betrieb = pflichtString(x, 'betrieb', kontext)
@@ -90,6 +116,7 @@ function parseAudit(x: unknown, kontext: string): Audit {
   }
   const prozesseRoh = x['prozesse']
   if (!Array.isArray(prozesseRoh)) throw new ImportFehler(`${kontext} "${betrieb}": prozesse fehlt`)
+  const herleitung = parseHerleitung(x['stundensatzHerleitung'], `${kontext} "${betrieb}"`)
   return {
     id: pflichtString(x, 'id', kontext),
     betrieb,
@@ -99,6 +126,8 @@ function parseAudit(x: unknown, kontext: string): Audit {
     stundensatzIntern,
     konservativFaktor,
     konservativBegruendung: pflichtString(x, 'konservativBegruendung', `${kontext} "${betrieb}"`),
+    // Nur setzen, wenn vorhanden — das Feld ist als optional deklariert.
+    ...(herleitung ? { stundensatzHerleitung: herleitung } : {}),
     prozesse: prozesseRoh.map((p, i) => parseProzess(p, `Audit "${betrieb}", Prozess ${i + 1}`)),
   }
 }

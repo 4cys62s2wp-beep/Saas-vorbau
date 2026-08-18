@@ -56,6 +56,17 @@ export function abschlagProzentAusFaktor(faktor: number): number {
   return Math.round((1 - faktor) * 1000) / 10
 }
 
+/**
+ * Sucht zu einer Messung die Gegenmessung desselben Betriebs (Erstmessung ↔
+ * Nachmessung). Gibt es mehrere — etwa nach sechs und nach zwölf Wochen —,
+ * wird die zeitlich jüngste genommen.
+ */
+export function findePartnerAudit(audit: Audit, alle: Audit[]): Audit | undefined {
+  return alle
+    .filter((a) => a.id !== audit.id && a.betrieb === audit.betrieb && a.phase !== audit.phase)
+    .sort((a, b) => b.datum.localeCompare(a.datum))[0]
+}
+
 /** Prüfpunkte, die vor dem PDF-Versand erledigt sein sollten. */
 export function offenePunkte(audit: Audit): string[] {
   const punkte: string[] = []

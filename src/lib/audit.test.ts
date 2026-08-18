@@ -4,6 +4,7 @@ import {
   abschlagProzentAusFaktor,
   erzeugeNachmessung,
   faktorAusAbschlagProzent,
+  findePartnerAudit,
   offenePunkte,
 } from './audit'
 
@@ -94,6 +95,29 @@ describe('Sicherheitsabschlag: Prozent ↔ Faktor', () => {
 
   it('wirft bei unbrauchbarer Eingabe', () => {
     expect(() => faktorAusAbschlagProzent(Number.NaN)).toThrow()
+  })
+})
+
+describe('findePartnerAudit', () => {
+  const nachmessung1: Audit = { ...baseline, id: 'n1', phase: 'nachmessung', datum: '2026-09-28' }
+  const nachmessung2: Audit = { ...baseline, id: 'n2', phase: 'nachmessung', datum: '2026-12-15' }
+  const andererBetrieb: Audit = { ...baseline, id: 'x1', betrieb: 'Andere GmbH', phase: 'nachmessung' }
+
+  it('findet die Nachmessung zur Erstmessung', () => {
+    expect(findePartnerAudit(baseline, [baseline, nachmessung1])?.id).toBe('n1')
+  })
+
+  it('nimmt bei mehreren Nachmessungen die jüngste', () => {
+    expect(findePartnerAudit(baseline, [baseline, nachmessung1, nachmessung2])?.id).toBe('n2')
+  })
+
+  it('findet umgekehrt auch die Erstmessung zur Nachmessung', () => {
+    expect(findePartnerAudit(nachmessung1, [baseline, nachmessung1])?.id).toBe('a1')
+  })
+
+  it('achtet auf den Betrieb und schließt sich selbst aus', () => {
+    expect(findePartnerAudit(baseline, [baseline, andererBetrieb])).toBeUndefined()
+    expect(findePartnerAudit(baseline, [baseline])).toBeUndefined()
   })
 })
 

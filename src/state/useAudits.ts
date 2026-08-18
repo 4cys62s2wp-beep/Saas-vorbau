@@ -3,12 +3,18 @@ import type { Audit } from '../types'
 import { ladeAudits, persistentSpeicherAnfordern, speichereAudits } from '../lib/storage'
 
 /**
- * Zentraler App-State: alle Audits, mit Autosave nach jeder Änderung
- * (Anforderung: Autosave nach jeder Aktion). Beim Start wird zusätzlich
- * persistenter Speicher angefordert (Eviction-Schutz, QUELLEN.md Thema 9).
+ * Zentraler Datenbestand mit automatischem Speichern nach jeder Änderung.
+ *
+ * Beim Start wird zusätzlich dauerhafter Speicher angefordert, damit das
+ * Betriebssystem die Daten nicht bei Speicherdruck wegräumt (QUELLEN.md, Thema 9).
+ *
+ * Schlägt das Speichern fehl — etwa weil der Gerätespeicher voll ist —, wird das
+ * gemeldet statt verschluckt: Daten, die nur auf einem Gerät liegen, dürfen nicht
+ * unbemerkt verloren gehen.
  */
 export function useAudits() {
   const [audits, setAuditsIntern] = useState<Audit[] | null>(null)
+  const [speicherFehler, setSpeicherFehler] = useState<string | null>(null)
 
   useEffect(() => {
     let aktiv = true
@@ -25,11 +31,15 @@ export function useAudits() {
   useEffect(() => {
     if (audits === null) return
     if (ersterStand.current) {
-      // Der erste Nicht-null-Stand ist der frisch geladene — nicht zurückschreiben.
+      // Der erste Stand ist der frisch geladene — nicht gleich zurückschreiben.
       ersterStand.current = false
       return
     }
-    void speichereAudits(audits)
+    speichereAudits(audits).then(
+      () => setSpeicherFehler(null),
+      (fehler: unknown) =>
+        setSpeicherFehler(fehler instanceof Error ? fehler.message : String(fehler)),
+    )
   }, [audits])
 
   const setAudits = useCallback((f: (alt: Audit[]) => Audit[]) => {
@@ -48,5 +58,6 @@ export function useAudits() {
     audits: audits ?? [],
     setAudits,
     aktualisiereAudit,
+    speicherFehler,
   }
 }

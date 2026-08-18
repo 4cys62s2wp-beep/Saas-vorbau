@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { leseZahl, schreibeZahl } from '../lib/zahlen'
 
 /**
  * Gemeinsame Bausteine der Oberfläche.
@@ -95,6 +96,74 @@ export function Feld({
       <span className="text-sm font-semibold">{label}</span>
       <input
         {...rest}
+        className={`min-h-11 w-full border border-tinte bg-papier px-3 ${rest.className ?? ''}`}
+      />
+      {hinweis && <span className="text-sm text-tinte-schwach">{hinweis}</span>}
+    </label>
+  )
+}
+
+/**
+ * Eingabefeld für Zahlen.
+ *
+ * Der getippte Text bleibt stehen, solange die Eingabe unfertig ist: Wer
+ * „52," tippt, um danach die Nachkommastelle zu ergänzen, darf das Komma
+ * nicht verlieren. Gemeldet wird nur, was sich als Zahl lesen lässt
+ * (siehe `lib/zahlen.ts` — dort auch die Punkt/Komma-Regel).
+ *
+ * `leerWert` ist der Wert, den der übergeordnete Bereich speichert, wenn das
+ * Feld geleert wird. Er wird hier mitgeführt, damit das Feld nicht sofort
+ * wieder mit einer Null gefüllt wird.
+ */
+export function ZahlFeld({
+  label,
+  hinweis,
+  wert,
+  onWert,
+  leerWert,
+  breite,
+  ...rest
+}: {
+  label: string
+  hinweis?: string
+  wert: number
+  onWert: (wert: number | null) => void
+  leerWert: number
+  breite?: string
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
+  const [text, setText] = useState(() => (wert === leerWert ? '' : schreibeZahl(wert)))
+  const gemeldet = useRef(wert)
+
+  useEffect(() => {
+    // Nur nachziehen, wenn der Wert von außen kam (anderer Datensatz,
+    // „Stundensatz übernehmen“) — nicht beim eigenen Tippen.
+    if (wert === gemeldet.current) return
+    setText(wert === leerWert ? '' : schreibeZahl(wert))
+    gemeldet.current = wert
+  }, [wert, leerWert])
+
+  const aendern = (eingabe: string) => {
+    setText(eingabe)
+    if (eingabe.trim() === '') {
+      gemeldet.current = leerWert
+      onWert(null)
+      return
+    }
+    const gelesen = leseZahl(eingabe)
+    // Unfertige Eingabe („52,“): stehen lassen, noch nichts melden.
+    if (gelesen === null) return
+    gemeldet.current = gelesen
+    onWert(gelesen)
+  }
+
+  return (
+    <label className={`flex flex-col gap-1 ${breite ?? ''}`}>
+      <span className="text-sm font-semibold">{label}</span>
+      <input
+        inputMode="decimal"
+        {...rest}
+        value={text}
+        onChange={(e) => aendern(e.target.value)}
         className={`zahl min-h-11 w-full border border-tinte bg-papier px-3 ${rest.className ?? ''}`}
       />
       {hinweis && <span className="text-sm text-tinte-schwach">{hinweis}</span>}

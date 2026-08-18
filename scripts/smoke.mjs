@@ -137,8 +137,30 @@ await satzAbschnitt.getByLabel('Lohnnebenkosten (Prozent)').fill('24')
 await satzAbschnitt.getByLabel('Gemeinkosten (Prozent)').fill('40')
 await satzAbschnitt.getByLabel('Produktive Stunden im Jahr').fill('1455')
 await satzAbschnitt.getByRole('button', { name: 'Diesen Stundensatz übernehmen' }).click()
+await seite.waitForTimeout(150)
 const satzWert = await satzAbschnitt.getByLabel('Stundensatz (Euro je Stunde)').inputValue()
 pruefe(satzWert !== '' && satzWert !== '0', `Stundensatz berechnet und übernommen (${satzWert} €)`)
+
+// Zahleneingabe: Punkt statt Komma darf den Betrag nicht verhundertfachen.
+await satzAbschnitt.getByLabel('Stundensatz (Euro je Stunde)').fill('52.84')
+await seite.waitForTimeout(150)
+await seite.reload()
+await seite.waitForSelector('h1:has-text("Prozess-Audit")')
+pruefe(
+  (await seite.locator('h2:has-text("Interner Stundensatz")').count()) === 1,
+  'nach dem Neustart ist wieder die zuletzt benutzte Ansicht offen',
+)
+const nachNeustart = await abschnitt('Interner Stundensatz')
+  .getByLabel('Stundensatz (Euro je Stunde)')
+  .inputValue()
+pruefe(nachNeustart === '52,84', `„52.84“ wird als 52,84 gelesen (gespeichert: ${nachNeustart})`)
+
+// Ein Komma muss sich tippen lassen, ohne dass es verschluckt wird.
+const satzFeld = abschnitt('Interner Stundensatz').getByLabel('Stundensatz (Euro je Stunde)')
+await satzFeld.fill('')
+await satzFeld.pressSequentially('60,5', { delay: 40 })
+const getippt = await satzFeld.inputValue()
+pruefe(getippt === '60,5', `Komma bleibt beim Tippen erhalten (Feld zeigt: ${getippt})`)
 
 const bewertung = abschnitt('Was lässt sich automatisieren?')
 await bewertung.getByRole('button', { name: 'Nein' }).click()
@@ -204,8 +226,40 @@ const [json] = await Promise.all([
 ])
 pruefe(json.suggestedFilename().endsWith('.json'), 'Sicherungsdatei wird erzeugt')
 
-// -------------------------------------------------------------- Nachmessung
+// --------------------------------------------------- Sicherungsdatei einlesen
+const sicherung = await json.path()
+// Zustand verändern, damit erkennbar ist, ob das Einlesen wirklich wirkt.
 await seite.getByRole('button', { name: 'Ändern' }).click()
+await seite.getByRole('textbox', { name: 'Betrieb', exact: true }).fill('Zwischendurch geändert')
+await seite.waitForTimeout(150)
+await seite.locator('input[type="file"]').setInputFiles(sicherung)
+// Die Datei wird asynchron gelesen — auf die Rückfrage warten.
+await seite
+  .getByRole('button', { name: 'Ersetzen' })
+  .waitFor({ timeout: 10000 })
+  .catch(() => {})
+pruefe(
+  (await seite.getByText('Vorhandene Messungen werden durch den Stand aus der Datei ersetzt').count()) === 1,
+  'Einlesen fragt nach, bevor Vorhandenes überschrieben wird',
+)
+await seite.getByRole('button', { name: 'Abbrechen' }).click()
+pruefe(
+  (await seite.locator('select option:has-text("Zwischendurch geändert")').count()) === 1,
+  'Abbrechen lässt den vorhandenen Stand unangetastet',
+)
+await seite.locator('input[type="file"]').setInputFiles(sicherung)
+await seite.getByRole('button', { name: 'Ersetzen' }).click()
+await seite.waitForTimeout(200)
+pruefe(
+  (await seite.locator('select option:has-text("Testbetrieb Huber")').count()) === 1,
+  'Ersetzen stellt den Stand aus der Datei wieder her',
+)
+
+// -------------------------------------------------------------- Nachmessung
+// Der Bereich „Ändern“ kann vom Einlesen noch offen sein.
+if ((await seite.getByRole('button', { name: /Nachmessung anlegen/ }).count()) === 0) {
+  await seite.getByRole('button', { name: 'Ändern' }).click()
+}
 await seite.getByRole('button', { name: /Nachmessung anlegen/ }).click()
 await seite.getByRole('button', { name: 'Messen' }).click()
 await seite.waitForSelector('h2:has-text("Prozess")')

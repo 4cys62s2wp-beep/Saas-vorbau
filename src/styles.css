@@ -41,6 +41,13 @@
     font-size: 17px;
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
+    /*
+      Auf dem iPad als Home-Bildschirm-App reicht die Seite bis unter die
+      Statusleiste und die abgerundeten Ecken. Diese Ränder halten den Inhalt
+      im sichtbaren Bereich.
+    */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
 
   /* Schriftart der Formularelemente vom Rest übernehmen (Farbe NICHT erzwingen). */

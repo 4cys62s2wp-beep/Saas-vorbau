@@ -3,7 +3,12 @@ import type { Absender, Audit, Prozess, Schritt } from '../types'
 import { LEERER_ABSENDER, ladeAbsender, speichereAbsender } from '../lib/storage'
 import { berechneAudit, vergleicheAudits } from '../lib/kennzahlen'
 import { berechneStundensatz } from '../lib/stundensatz'
-import { abschlagProzentAusFaktor, faktorAusAbschlagProzent, offenePunkte } from '../lib/audit'
+import {
+  abschlagProzentAusFaktor,
+  faktorAusAbschlagProzent,
+  findePartnerAudit,
+  offenePunkte,
+} from '../lib/audit'
 import { KONSERVATIV_BEGRUENDUNGEN } from '../lib/quellen'
 import {
   formatiereEuro,
@@ -13,7 +18,8 @@ import {
   formatiereStunden,
   formatiereZahl,
 } from '../lib/format'
-import { Abschnitt, Feld, Hinweis, Knopf, Textfeld } from './ui'
+import { leseZahlNichtNegativ } from '../lib/zahlen'
+import { Abschnitt, Feld, Hinweis, Knopf, Textfeld, ZahlFeld } from './ui'
 
 /**
  * Auswertung am Rechner: Stundensatz, Bewertung der Arbeitsschritte,
@@ -24,8 +30,6 @@ interface KalkulationProps {
   audits: Audit[]
   aktualisiereAudit: (id: string, f: (a: Audit) => Audit) => void
 }
-
-const zahl = (s: string) => Number(s.replace(/\./g, '').replace(',', '.'))
 
 export function Kalkulation({ audit, audits, aktualisiereAudit }: KalkulationProps) {
   if (!audit) {
@@ -62,21 +66,28 @@ function StundensatzAbschnitt({
   const [gemein, setGemein] = useState('')
   const [stunden, setStunden] = useState('')
 
-  const eingaben = {
-    bruttoJahreslohn: zahl(brutto),
-    lohnnebenkostenProzent: zahl(lnk),
-    gemeinkostenProzent: zahl(gemein),
-    produktiveStundenProJahr: zahl(stunden),
+  // Alle vier Angaben müssen brauchbar sein, sonst wird nichts gerechnet.
+  const werte = {
+    bruttoJahreslohn: leseZahlNichtNegativ(brutto),
+    lohnnebenkostenProzent: leseZahlNichtNegativ(lnk),
+    gemeinkostenProzent: leseZahlNichtNegativ(gemein),
+    produktiveStundenProJahr: leseZahlNichtNegativ(stunden),
   }
-  const rechenbar =
-    [
-      eingaben.bruttoJahreslohn,
-      eingaben.lohnnebenkostenProzent,
-      eingaben.gemeinkostenProzent,
-    ].every((w) => Number.isFinite(w) && w >= 0) &&
-    Number.isFinite(eingaben.produktiveStundenProJahr) &&
-    eingaben.produktiveStundenProJahr > 0
-  const ergebnis = rechenbar ? berechneStundensatz(eingaben) : null
+  const vollstaendig =
+    werte.bruttoJahreslohn !== null &&
+    werte.lohnnebenkostenProzent !== null &&
+    werte.gemeinkostenProzent !== null &&
+    werte.produktiveStundenProJahr !== null &&
+    werte.produktiveStundenProJahr > 0
+  const eingaben = vollstaendig
+    ? {
+        bruttoJahreslohn: werte.bruttoJahreslohn!,
+        lohnnebenkostenProzent: werte.lohnnebenkostenProzent!,
+        gemeinkostenProzent: werte.gemeinkostenProzent!,
+        produktiveStundenProJahr: werte.produktiveStundenProJahr!,
+      }
+    : null
+  const ergebnis = eingaben ? berechneStundensatz(eingaben) : null
 
   return (
     <Abschnitt
@@ -90,19 +101,18 @@ function StundensatzAbschnitt({
       }
     >
       <div className="flex flex-wrap items-end gap-4">
-        <Feld
+        <ZahlFeld
           label="Stundensatz (Euro je Stunde)"
-          inputMode="decimal"
           placeholder="z. B. 52,84"
           breite="w-60"
-          value={audit.stundensatzIntern === 0 ? '' : String(audit.stundensatzIntern).replace('.', ',')}
-          onChange={(e) => {
-            const v = zahl(e.target.value)
+          wert={audit.stundensatzIntern}
+          leerWert={0}
+          onWert={(v) =>
             aktualisiereAudit(audit.id, (a) => ({
               ...a,
-              stundensatzIntern: Number.isFinite(v) && v >= 0 ? v : 0,
+              stundensatzIntern: v !== null && v >= 0 ? v : 0,
             }))
-          }}
+          }
         />
         {audit.stundensatzIntern === 0 && (
           <p className="pb-2 font-semibold">Pflichtangabe — ohne Stundensatz keine Euro-Rechnung.</p>
@@ -150,7 +160,7 @@ function StundensatzAbschnitt({
                 Personalkosten {formatiereEuro(ergebnis.personalkostenProJahr)} + Gemeinkosten{' '}
                 {formatiereEuro(ergebnis.gemeinkostenProJahr)} ={' '}
                 {formatiereEuro(ergebnis.gesamtkostenProJahr)} ÷{' '}
-                {formatiereZahl(eingaben.produktiveStundenProJahr)} Stunden ={' '}
+                {formatiereZahl(eingaben!.produktiveStundenProJahr)} Stunden ={' '}
                 <strong>{formatiereEuro(ergebnis.stundensatz)} je Stunde</strong>
               </p>
               <div className="mt-3">
@@ -161,7 +171,7 @@ function StundensatzAbschnitt({
                       ...a,
                       stundensatzIntern: Math.round(ergebnis.stundensatz * 100) / 100,
                       // Die Herleitung wird mitgespeichert, damit sie im PDF steht.
-                      stundensatzHerleitung: eingaben,
+                      stundensatzHerleitung: eingaben!,
                     }))
                   }
                 >
@@ -340,16 +350,17 @@ function AbschlagAbschnitt({
       hinweis="Die errechnete Ersparnis wird bewusst gekürzt. Höhe und Begründung legen Sie selbst fest — beides steht später im PDF, damit der Kunde nachvollziehen kann, warum vorsichtig gerechnet wurde."
     >
       <div className="flex flex-wrap items-end gap-4">
-        <Feld
+        <ZahlFeld
           label="Abschlag in Prozent"
-          inputMode="decimal"
           breite="w-44"
-          value={String(prozent).replace('.', ',')}
-          onChange={(e) => {
-            const v = zahl(e.target.value)
-            if (!Number.isFinite(v)) return
-            aktualisiereAudit(audit.id, (a) => ({ ...a, konservativFaktor: faktorAusAbschlagProzent(v) }))
-          }}
+          wert={prozent}
+          leerWert={0}
+          onWert={(v) =>
+            aktualisiereAudit(audit.id, (a) => ({
+              ...a,
+              konservativFaktor: faktorAusAbschlagProzent(v ?? 0),
+            }))
+          }
         />
         <p className="zahl pb-2 text-sm text-tinte-schwach">
           Rechenfaktor {formatiereZahl(audit.konservativFaktor, 2)} — so steht es im PDF.
@@ -481,7 +492,7 @@ function ErgebnisAbschnitt({ audit }: { audit: Audit }) {
 }
 
 function VergleichAbschnitt({ audit, audits }: { audit: Audit; audits: Audit[] }) {
-  const partner = audits.find((a) => a.betrieb === audit.betrieb && a.phase !== audit.phase)
+  const partner = findePartnerAudit(audit, audits)
   if (!partner) return null
 
   const baseline = audit.phase === 'baseline' ? audit : partner
@@ -544,7 +555,7 @@ function PdfAbschnitt({ audit, audits }: { audit: Audit; audits: Audit[] }) {
   const [fehler, setFehler] = useState<string | null>(null)
   const [absender, setAbsender] = useState<Absender>(LEERER_ABSENDER)
   const [angabenOffen, setAngabenOffen] = useState(false)
-  const partner = audits.find((a) => a.betrieb === audit.betrieb && a.phase !== audit.phase)
+  const partner = findePartnerAudit(audit, audits)
 
   useEffect(() => {
     void ladeAbsender().then(setAbsender)
