@@ -10,11 +10,25 @@ das Angebot bis zum Nachweis-PDF nach der Nachmessung.
 
 ## Was du als Erstes tun solltest
 
+Dieses Programm liegt im Repository **Saas-vorbau** — nicht zu verwechseln mit
+anderen Projekten auf dem Rechner.
+
 ```bash
-git fetch origin
+cd ~
+git clone https://github.com/4cys62s2wp-beep/Saas-vorbau.git
+cd Saas-vorbau
 git checkout claude/audit-tool-research-phase-wh2r5z
 ./RUNME.sh          # installiert, prüft, testet, baut — dauert ein bis zwei Minuten
 npm run dev         # startet das Programm, Adresse steht im Terminal
+```
+
+Ist das Repository schon geklont, genügt beim nächsten Mal:
+
+```bash
+cd ~/Saas-vorbau
+git fetch origin
+git checkout claude/audit-tool-research-phase-wh2r5z
+git pull
 ```
 
 1. **Absenderangaben eintragen** — im Programm unter **Auswerten → PDF →

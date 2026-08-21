@@ -42,6 +42,9 @@ Prozesse und Arbeitsschritte, aber **keine** Zeiten — nachgemessen wird neu.
 ## Starten
 
 ```bash
+git clone https://github.com/4cys62s2wp-beep/Saas-vorbau.git
+cd Saas-vorbau
+git checkout claude/audit-tool-research-phase-wh2r5z
 ./RUNME.sh        # einmalig: installieren, prüfen, testen, bauen
 npm run dev       # Entwicklung am Rechner
 ```
