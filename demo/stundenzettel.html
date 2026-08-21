@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stundenzettel — heute und künftig</title>
+<style>
+  :root {
+    --papier: #ffffff;
+    --tinte: #000000;
+    --tinte-schwach: #4a4a4a;
+    --linie: #c8c8c8;
+    --flaeche: #f4f4f4;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --hand: "Bradley Hand", "Segoe Print", "Chalkboard", "Comic Sans MS", cursive;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; background: var(--flaeche); }
+
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    color: var(--tinte);
+    font-size: 17px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  button { font: inherit; }
+  button:focus-visible { outline: 2px solid var(--tinte); outline-offset: 2px; }
+
+  .zahl { font-variant-numeric: tabular-nums; }
+
+  .huelle { max-width: 1000px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  header { margin-bottom: 20px; }
+  h1 { font-size: 27px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .unterzeile { color: var(--tinte-schwach); margin: 0; }
+
+  .abschnitt {
+    background: var(--papier);
+    border: 1px solid var(--linie);
+    margin-bottom: 20px;
+  }
+  .abschnitt > .kopf {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    padding: 14px 18px; border-bottom: 1px solid var(--linie);
+  }
+  .abschnitt > .kopf .nr {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--tinte-schwach); white-space: nowrap;
+  }
+  .abschnitt > .kopf h2 { font-size: 20px; margin: 0; font-weight: 700; }
+  .abschnitt > .rumpf { padding: 18px; }
+  .abschnitt > .rumpf > p:first-child { margin-top: 0; }
+  .abschnitt > .rumpf > :last-child { margin-bottom: 0; }
+
+  .hinweis {
+    border-left: 4px solid var(--linie);
+    background: var(--flaeche);
+    padding: 10px 14px;
+    margin: 14px 0;
+  }
+  .hinweis.wichtig { border-left-color: var(--tinte); }
+  .hinweis p { margin: 0; }
+  .hinweis p + p { margin-top: 6px; }
+
+  .knopf {
+    display: inline-block; border: 2px solid var(--tinte); background: var(--tinte);
+    color: var(--papier); padding: 12px 22px; font-weight: 700; cursor: pointer;
+    min-height: 48px;
+  }
+  .knopf.zweit { background: var(--papier); color: var(--tinte); font-weight: 600; }
+  .knopf:disabled { opacity: 0.35; cursor: default; }
+  .knopfzeile { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* ---------- Der eingescannte Zettel ---------- */
+
+  .blatt-rahmen { background: var(--flaeche); padding: 20px; overflow-x: auto; }
+
+  .blatt {
+    position: relative;
+    background: #fdfdfb;
+    border: 1px solid #b4b4b4;
+    box-shadow: 0 1px 0 #dcdcdc, 0 6px 18px rgba(0,0,0,0.10);
+    padding: 16px 18px 18px;
+    min-width: 660px;
+    transform: rotate(-0.35deg);
+  }
+  .blatt-kopf { border-bottom: 2px solid var(--tinte); padding-bottom: 8px; margin-bottom: 10px; }
+  .blatt-kopf .titel { font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
+  .blatt-kopf .meta { font-size: 13px; color: var(--tinte-schwach); display: flex; gap: 22px; flex-wrap: wrap; margin-top: 4px; }
+  .blatt-kopf .meta .hand { font-size: 16px; }
+
+  table.blatt-tabelle { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.blatt-tabelle th {
+    text-align: left; font-weight: 600; font-size: 10.5px; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--tinte-schwach);
+    border-bottom: 1px solid #9a9a9a; padding: 3px 5px; white-space: nowrap;
+  }
+  table.blatt-tabelle td { border-bottom: 1px solid #e2e2e2; padding: 2px 5px; height: 26px; }
+  table.blatt-tabelle .tagspalte { width: 58px; color: var(--tinte-schwach); font-size: 11.5px; white-space: nowrap; }
+  table.blatt-tabelle .mitte { text-align: center; width: 42px; }
+  table.blatt-tabelle .zeitspalte { width: 54px; }
+
+  /* Handschrift vor dem Einlesen, saubere Schrift danach */
+  .blatt-tabelle .wert { font-family: var(--hand); font-size: 16px; color: #1f1f1f; }
+  .blatt-tabelle tr.erkannt .wert {
+    font-family: var(--sans); font-size: 13px; color: var(--tinte);
+    font-variant-numeric: tabular-nums;
+  }
+  .blatt-tabelle tr.erkannt { background: #f0f0f0; }
+  .blatt-tabelle tr.leer .wert::after { content: ""; }
+
+  .kreuz { font-family: var(--hand); font-size: 17px; line-height: 1; }
+  tr.erkannt .kreuz { font-family: var(--sans); font-size: 13px; }
+
+  .scanlinie {
+    position: absolute; left: 0; right: 0; height: 3px; background: var(--tinte);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 8px 14px -6px rgba(0,0,0,0.5);
+    top: 0; display: none; pointer-events: none;
+  }
+  .blatt.laeuft .scanlinie { display: block; }
+
+  /* ---------- Ergebnistabellen ---------- */
+
+  .tabellenrahmen { overflow-x: auto; }
+  table.daten { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  table.daten th {
+    text-align: left; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--tinte-schwach); font-weight: 600; border-bottom: 2px solid var(--tinte);
+    padding: 6px 8px; white-space: nowrap;
+  }
+  table.daten td { border-bottom: 1px solid var(--linie); padding: 6px 8px; vertical-align: top; }
+  table.daten td.r, table.daten th.r { text-align: right; }
+  table.daten tr.summe td { border-top: 2px solid var(--tinte); border-bottom: none; font-weight: 700; }
+  table.daten tr.fehlt td { background: var(--flaeche); color: var(--tinte-schwach); font-style: italic; }
+  table.daten .zahl { font-variant-numeric: tabular-nums; }
+
+  .marke {
+    display: inline-block; border: 1px solid var(--tinte); padding: 0 5px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .marke.voll { background: var(--tinte); color: var(--papier); }
+  .unsicher { border-bottom: 2px dotted var(--tinte); }
+
+  .befund { border: 1px solid var(--linie); border-left: 4px solid var(--tinte); padding: 12px 14px; margin-bottom: 10px; }
+  .befund h3 { margin: 0 0 4px; font-size: 16px; }
+  .befund p { margin: 0; font-size: 15px; }
+  .befund .paragraf { color: var(--tinte-schwach); font-size: 13.5px; margin-top: 5px; }
+
+  .kennzahlen { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border: 1px solid var(--linie); }
+  .kennzahlen > div { padding: 12px 14px; border-right: 1px solid var(--linie); }
+  .kennzahlen > div:last-child { border-right: none; }
+  .kennzahlen .beschriftung { font-size: 12.5px; color: var(--tinte-schwach); }
+  .kennzahlen .wert { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .verborgen { display: none; }
+
+  pre.datei {
+    background: var(--flaeche); border: 1px solid var(--linie); padding: 12px;
+    font-size: 12.5px; overflow-x: auto; margin: 0; line-height: 1.5;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  footer { color: var(--tinte-schwach); font-size: 14px; border-top: 1px solid var(--linie); padding-top: 14px; }
+
+  /* ---------- Druck ---------- */
+
+  #druckbereich { display: none; }
+
+  @media print {
+    body { background: #fff; font-size: 11pt; }
+    .huelle { display: none; }
+    #druckbereich { display: block; padding: 0; }
+    #druckbereich h1 { font-size: 17pt; margin-bottom: 2mm; }
+    #druckbereich .kopfzeile { font-size: 9pt; color: #333; border-bottom: 0.5pt solid #999; padding-bottom: 2mm; margin-bottom: 5mm; }
+    #druckbereich table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+    #druckbereich th { text-align: left; border-bottom: 1pt solid #000; padding: 1.5mm 1mm; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em; }
+    #druckbereich td { border-bottom: 0.4pt solid #ccc; padding: 1.2mm 1mm; }
+    #druckbereich td.r, #druckbereich th.r { text-align: right; }
+    #druckbereich tr.summe td { border-top: 1pt solid #000; border-bottom: none; font-weight: 700; }
+    #druckbereich .fussnote { font-size: 8.5pt; color: #333; margin-top: 4mm; }
+    #druckbereich h2 { font-size: 12pt; margin: 7mm 0 2mm; }
+    @page { margin: 18mm 16mm; }
+  }
+</style>
+</head>
+<body>
+
+<div class="huelle">
+
+<header>
+  <h1>Stundenzettel — heute und künftig</h1>
+  <p class="unterzeile">Beispiel: ein Monat, ein Mitarbeiter, ein Tiefbaubetrieb.</p>
+</header>
+
+<div class="hinweis wichtig">
+  <p><strong>Was das hier ist:</strong> eine Demonstration mit einem erfundenen
+  Beispielzettel. Die Erkennung läuft in dieser Vorführung nicht live, sondern ist
+  vorbereitet — gezeigt wird das <em>Ergebnis</em>, nicht die Technik dahinter.</p>
+  <p>Was Ihr Betrieb tatsächlich spart, wird vorher vor Ort gemessen. Diese Seite
+  behauptet dazu keine Zahl.</p>
+</div>
+
+<!-- 1 ---------------------------------------------------------------- -->
+<section class="abschnitt">
+  <div class="kopf"><span class="nr">Schritt 1</span><h2>So kommt der Zettel heute ins Büro</h2></div>
+  <div class="rumpf">
+    <p style="margin-top:0">Ein Blatt je Mitarbeiter und Monat. Jede Zeile ein Tag:
+      Ort, Straße, was gemacht wurde, von wann bis wann, Kreuz bei Brotzeit und Mittag.</p>
+
+    <div class="blatt-rahmen">
+      <div class="blatt" id="blatt">
+        <div class="scanlinie" id="scanlinie"></div>
+        <div class="blatt-kopf">
+          <div class="titel">STUNDENNACHWEIS</div>
+          <div class="meta">
+            <span>Monat: <span class="hand">Juli 2026</span></span>
+            <span>Mitarbeiter: <span class="hand">M. Huber</span></span>
+            <span>Bl. 1 von 1</span>
+          </div>
+        </div>
+        <table class="blatt-tabelle">
+          <thead>
+            <tr>
+              <th class="tagspalte">Tag</th>
+              <th>Ort</th>
+              <th>Straße</th>
+              <th>Ausgeführte Arbeit</th>
+              <th class="mitte">Brotz.</th>
+              <th class="mitte">Mittag</th>
+              <th class="zeitspalte">von</th>
+              <th class="zeitspalte">bis</th>
+            </tr>
+          </thead>
+          <tbody id="blatt-koerper"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="knopfzeile" style="margin-top:16px">
+      <button class="knopf" id="einlesen">Zettel einlesen</button>
+      <button class="knopf zweit" id="zuruecksetzen">Von vorn</button>
+    </div>
+  </div>
+</section>
+
+<!-- 2 ---------------------------------------------------------------- -->
+<section class="abschnitt verborgen" id="a-erkannt">
+  <div class="kopf"><span class="nr">Schritt 2</span><h2>Was gelesen wurde</h2></div>
+  <div class="rumpf">
+    <p style="margin-top:0" id="erkannt-satz"></p>
+    <div class="hinweis" id="erkannt-hinweis"></div>
+    <div class="tabellenrahmen">
+      <table class="daten" id="tab-erkannt"></table>
+    </div>
+  </div>
+</section>
+
+<!-- 3 ---------------------------------------------------------------- -->
+<section class="abschnitt verborgen" id="a-pruefung">
+  <div class="kopf"><span class="nr">Schritt 3</span><h2>Was auffällt</h2></div>
+  <div class="rumpf">
+    <p style="margin-top:0">Das findet heute niemand, weil niemand 22 Zeilen gegen das
+      Arbeitszeitgesetz nachrechnet.</p>
+    <div id="befunde"></div>
+  </div>
+</section>
+
+<!-- 4 ---------------------------------------------------------------- -->
+<section class="abschnitt verborgen" id="a-baustellen">
+  <div class="kopf"><span class="nr">Schritt 4</span><h2>Stunden je Baustelle</h2></div>
+  <div class="rumpf">
+    <p style="margin-top:0">Diese Aufstellung ist der eigentliche Zweck: Sie steht sofort
+      für die Rechnung an den Auftraggeber bereit — heute wird sie von Hand aus dem
+      Zettel zusammengesucht.</p>
+    <div class="tabellenrahmen">
+      <table class="daten" id="tab-baustellen"></table>
+    </div>
+  </div>
+</section>
+
+<!-- 5 ---------------------------------------------------------------- -->
+<section class="abschnitt verborgen" id="a-ausgabe">
+  <div class="kopf"><span class="nr">Schritt 5</span><h2>Was hinten herauskommt</h2></div>
+  <div class="rumpf">
+    <div class="kennzahlen" id="kennzahlen"></div>
+    <p>Auf Knopfdruck, ohne dass jemand etwas abtippt:</p>
+    <div class="knopfzeile">
+      <button class="knopf" id="druck-monat">Monatsübersicht als PDF</button>
+      <button class="knopf" id="druck-baustellen">Stunden je Baustelle als PDF</button>
+      <button class="knopf zweit" id="zeige-lohn">Datei für die Lohnbuchhaltung</button>
+    </div>
+    <div class="hinweis" style="margin-top:14px">
+      <p>Die beiden PDF-Schaltflächen öffnen den Druckdialog. Dort links unten
+        <strong>PDF</strong> → <strong>Als PDF sichern</strong> wählen.</p>
+    </div>
+    <div id="lohnbereich" class="verborgen" style="margin-top:14px">
+      <p style="margin-bottom:6px"><strong>Übergabedatei</strong> — so bekommt sie das
+        Lohnbüro, statt einer Kopie vom Zettel:</p>
+      <pre class="datei" id="lohn-datei"></pre>
+      <div class="knopfzeile" style="margin-top:10px">
+        <button class="knopf zweit" id="lohn-kopieren">Inhalt kopieren</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p><strong>Ehrlich bleiben im Gespräch:</strong> Handschrift wird nicht fehlerfrei
+    gelesen. Ein System, das etwas anderes verspricht, ist unseriös. Deshalb markiert
+    diese Darstellung unsichere Stellen und legt sie zur Bestätigung vor, statt sie
+    stillschweigend zu übernehmen. Der zuverlässigere Weg ist ohnehin, die Zeit gleich
+    auf der Baustelle zu erfassen — dann entfällt der Zettel ganz.</p>
+</footer>
+
+</div><!-- /huelle -->
+
+<div id="druckbereich"></div>
+
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------ *
+ * Beispieldaten: Juli 2026, ein Mitarbeiter, Tiefbau.
+ * "unsicher" markiert Felder, die eine maschinelle Erkennung realistisch
+ * NICHT sicher lesen kann und deshalb vorgelegt werden müssen.
+ * ------------------------------------------------------------------ */
+
+var MONAT = { jahr: 2026, monat: 7, name: "Juli 2026" };
+var MITARBEITER = "M. Huber";
+
+var ZEILEN = [
+  { tag:  1, ort: "Au i.d.Hallertau", strasse: "Hauptstr. 12",     arbeit: "Kanalanschluss",     von: "07:00", bis: "16:30", brotzeit: true,  mittag: true },
+  { tag:  2, ort: "Au i.d.Hallertau", strasse: "Hauptstr. 12",     arbeit: "Kanalanschluss",     von: "07:00", bis: "16:30", brotzeit: true,  mittag: true },
+  { tag:  3, ort: "Au i.d.Hallertau", strasse: "Hauptstr. 12",     arbeit: "Kanal, Verfüllung",  von: "07:00", bis: "14:00", brotzeit: false, mittag: true },
+  { tag:  6, ort: "Au i.d.Hallertau", strasse: "Hauptstr. 12",     arbeit: "Kanal, Schacht",     von: "06:30", bis: "17:00", brotzeit: true,  mittag: true },
+  { tag:  7, ort: "Au i.d.Hallertau", strasse: "Hauptstr. 12",     arbeit: "Kanal, Oberfläche",  von: "07:00", bis: "16:30", brotzeit: true,  mittag: true },
+  { tag:  8, ort: "Zolling",          strasse: "Lindenweg 8",      arbeit: "Baugrube EFH",       von: "07:00", bis: "16:00", brotzeit: true,  mittag: true },
+  { tag:  9, ort: "Zolling",          strasse: "Lindenweg 8",      arbeit: "Baugrube EFH",       von: "07:00", bis: "16:00", brotzeit: true,  mittag: true },
+  { tag: 10, ort: "Zolling",          strasse: "Lindenweg 8",      arbeit: "Baugrube, Böschung", von: "07:00", bis: "13:30", brotzeit: false, mittag: true },
+  { tag: 13, ort: "Zolling",          strasse: "Lindenweg 8",      arbeit: "Sohle, Beton",       von: "06:30", bis: "18:00", brotzeit: false, mittag: true, unsicher: ["bis"] },
+  { tag: 14, ort: "Zolling",          strasse: "Lindenweg 8",      arbeit: "Baugrube, Abzug",    von: "07:00", bis: "16:30", brotzeit: true,  mittag: true },
+  { tag: 15, ort: "Attenkirchen",     strasse: "Gemeindeverb.str.", arbeit: "Wasserleitung",     von: "07:00", bis: "16:30", brotzeit: true,  mittag: true },
+  { tag: 17, ort: "Attenkirchen",     strasse: "Gemeindeverb.str.", arbeit: "Wasserltg., Graben", von: "07:00", bis: "14:30", brotzeit: false, mittag: true },
+  { tag: 20, ort: "Attenkirchen",     strasse: "Gemeindeverb.str.", arbeit: "Wasserltg., Spülen", von: "07:00", bis: "17:00", brotzeit: false, mittag: true, unsicher: ["brotzeit"] },
+  { tag: 21, ort: "Attenkirchen",     strasse: "Gemeindeverb.str.", arbeit: "Wasserltg., Verfüll.", von: "07:00", bis: "16:30", brotzeit: true, mittag: true },
+  { tag: 22, ort: "Bauhof",           strasse: "—",                arbeit: "Wartung Bagger",     von: "08:00", bis: "16:00", brotzeit: false, mittag: true, unsicher: ["ort"] },
+  { tag: 23, ort: "Nandlstadt",       strasse: "Landshuter Str. 44", arbeit: "Hofbefestigung",   von: "07:00", bis: "16:30", brotzeit: true,  mittag: true },
+  { tag: 24, ort: "Nandlstadt",       strasse: "Landshuter Str. 44", arbeit: "Hof, Pflaster",    von: "07:00", bis: "14:00", brotzeit: false, mittag: true },
+  { tag: 27, ort: "Nandlstadt",       strasse: "Landshuter Str. 44", arbeit: "Hof, Pflaster",    von: "07:00", bis: "16:30", brotzeit: true,  mittag: true },
+  { tag: 28, ort: "Nandlstadt",       strasse: "Landshuter Str. 44", arbeit: "Hof, Randsteine",  von: "07:00", bis: "16:30", brotzeit: true,  mittag: true },
+  { tag: 29, ort: "Nandlstadt",       strasse: "Landshuter Str. 44", arbeit: "Hof, Fertigstellg.", von: "06:30", bis: "17:00", brotzeit: true, mittag: true },
+  { tag: 30, ort: "Au i.d.Hallertau", strasse: "Hauptstr. 12",     arbeit: "Nacharbeit Kanal",   von: "07:00", bis: "16:30", brotzeit: true,  mittag: true },
+  { tag: 31, ort: "Au i.d.Hallertau", strasse: "Hauptstr. 12",     arbeit: "Nacharbeit, Abnahme", von: "07:00", bis: "13:00", brotzeit: false, mittag: true }
+];
+
+/* Dauer der angekreuzten Pausen, wie sie auf diesem Zettel gemeint sind. */
+var PAUSE_MITTAG_MIN = 30;
+var PAUSE_BROTZEIT_MIN = 15;
+
+/* ------------------------------------------------------------------ *
+ * Hilfsfunktionen
+ * ------------------------------------------------------------------ */
+
+var WOCHENTAGE = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+
+function wochentag(tag) {
+  return WOCHENTAGE[new Date(MONAT.jahr, MONAT.monat - 1, tag).getDay()];
+}
+
+function istWerktag(tag) {
+  var d = new Date(MONAT.jahr, MONAT.monat - 1, tag).getDay();
+  return d >= 1 && d <= 5;
+}
+
+function tageImMonat() {
+  return new Date(MONAT.jahr, MONAT.monat, 0).getDate();
+}
+
+function minutenAus(uhrzeit) {
+  var t = uhrzeit.split(":");
+  return parseInt(t[0], 10) * 60 + parseInt(t[1], 10);
+}
+
+function stundenText(minuten) {
+  var h = minuten / 60;
+  return h.toFixed(2).replace(".", ",") + " h";
+}
+
+function minutenText(minuten) {
+  return minuten + " min";
+}
+
+function zahlText(wert, stellen) {
+  return wert.toFixed(stellen === undefined ? 2 : stellen).replace(".", ",");
+}
+
+/* Gesetzliche Mindestpause nach der tatsächlichen Arbeitszeit.
+   § 4 ArbZG: mehr als 6 bis 9 Stunden -> 30 Minuten, mehr als 9 Stunden -> 45 Minuten.
+   Ruhepausen zählen nicht zur Arbeitszeit (§ 2 Abs. 1 ArbZG), die Schwelle gilt
+   also für die Zeit OHNE Pause. */
+function pflichtpause(arbeitsminuten) {
+  if (arbeitsminuten > 9 * 60) return 45;
+  if (arbeitsminuten > 6 * 60) return 30;
+  return 0;
+}
+
+/* ------------------------------------------------------------------ *
+ * Auswertung
+ * ------------------------------------------------------------------ */
+
+function auswerten() {
+  var zeilen = ZEILEN.map(function (z) {
+    var brutto = minutenAus(z.bis) - minutenAus(z.von);
+    var erfasstePause = (z.mittag ? PAUSE_MITTAG_MIN : 0) + (z.brotzeit ? PAUSE_BROTZEIT_MIN : 0);
+    var arbeitszeitLautZettel = brutto - erfasstePause;
+    var pflicht = pflichtpause(arbeitszeitLautZettel);
+    var fehlendePause = Math.max(0, pflicht - erfasstePause);
+    /* Für die Abrechnung wird mindestens die gesetzliche Pause abgezogen. */
+    var angerechnet = brutto - Math.max(erfasstePause, pflicht);
+    return {
+      tag: z.tag,
+      wochentag: wochentag(z.tag),
+      ort: z.ort,
+      strasse: z.strasse,
+      arbeit: z.arbeit,
+      von: z.von,
+      bis: z.bis,
+      brotzeit: z.brotzeit,
+      mittag: z.mittag,
+      unsicher: z.unsicher || [],
+      brutto: brutto,
+      erfasstePause: erfasstePause,
+      pflichtpause: pflicht,
+      fehlendePause: fehlendePause,
+      angerechnet: angerechnet,
+      baustelle: z.strasse === "—" ? z.ort : z.ort + ", " + z.strasse
+    };
+  });
+
+  var eingetragen = {};
+  zeilen.forEach(function (z) { eingetragen[z.tag] = true; });
+
+  var luecken = [];
+  for (var t = 1; t <= tageImMonat(); t++) {
+    if (istWerktag(t) && !eingetragen[t]) luecken.push(t);
+  }
+
+  var baustellen = {};
+  zeilen.forEach(function (z) {
+    if (!baustellen[z.baustelle]) baustellen[z.baustelle] = { name: z.baustelle, minuten: 0, tage: 0 };
+    baustellen[z.baustelle].minuten += z.angerechnet;
+    baustellen[z.baustelle].tage += 1;
+  });
+  var baustellenListe = Object.keys(baustellen).map(function (k) { return baustellen[k]; });
+  baustellenListe.sort(function (a, b) { return b.minuten - a.minuten; });
+
+  var summeAngerechnet = zeilen.reduce(function (s, z) { return s + z.angerechnet; }, 0);
+  var summePause = zeilen.reduce(function (s, z) { return s + Math.max(z.erfasstePause, z.pflichtpause); }, 0);
+  var unsichereFelder = zeilen.reduce(function (s, z) { return s + z.unsicher.length; }, 0);
+
+  return {
+    zeilen: zeilen,
+    luecken: luecken,
+    baustellen: baustellenListe,
+    summeAngerechnet: summeAngerechnet,
+    summePause: summePause,
+    unsichereFelder: unsichereFelder,
+    pausenverstoesse: zeilen.filter(function (z) { return z.fehlendePause > 0; }),
+    ueberlange: zeilen.filter(function (z) { return z.angerechnet > 10 * 60; }),
+    zeilenMitUnsicher: zeilen.filter(function (z) { return z.unsicher.length > 0; })
+  };
+}
+
+var E = auswerten();
+
+/* ------------------------------------------------------------------ *
+ * Der Zettel
+ * ------------------------------------------------------------------ */
+
+function kreuz(gesetzt, unsicher) {
+  if (!gesetzt) return '<span class="kreuz">&nbsp;</span>';
+  return '<span class="kreuz' + (unsicher ? ' unsicher' : '') + '">X</span>';
+}
+
+function blattZeichnen() {
+  var koerper = document.getElementById("blatt-koerper");
+  var html = "";
+  var nachTag = {};
+  ZEILEN.forEach(function (z) { nachTag[z.tag] = z; });
+
+  for (var t = 1; t <= tageImMonat(); t++) {
+    var z = nachTag[t];
+    var werktag = istWerktag(t);
+    /* Nur Werktage zeigen — das Blatt bleibt lesbar und entspricht der Praxis. */
+    if (!werktag) continue;
+    if (z) {
+      html +=
+        '<tr data-tag="' + t + '">' +
+        '<td class="tagspalte">' + t + ". " + wochentag(t) + "</td>" +
+        '<td class="wert">' + z.ort + "</td>" +
+        '<td class="wert">' + z.strasse + "</td>" +
+        '<td class="wert">' + z.arbeit + "</td>" +
+        '<td class="mitte">' + kreuz(z.brotzeit) + "</td>" +
+        '<td class="mitte">' + kreuz(z.mittag) + "</td>" +
+        '<td class="wert zeitspalte">' + z.von + "</td>" +
+        '<td class="wert zeitspalte">' + z.bis + "</td>" +
+        "</tr>";
+    } else {
+      html +=
+        '<tr data-tag="' + t + '" class="leer">' +
+        '<td class="tagspalte">' + t + ". " + wochentag(t) + "</td>" +
+        '<td colspan="7"></td></tr>';
+    }
+  }
+  koerper.innerHTML = html;
+}
+
+/* ------------------------------------------------------------------ *
+ * Einlesen: Scanlinie läuft über das Blatt, Handschrift wird zu Klarschrift
+ * ------------------------------------------------------------------ */
+
+var laeuft = false;
+var zeitgeber = [];
+
+function abbrechen() {
+  zeitgeber.forEach(clearTimeout);
+  zeitgeber = [];
+  laeuft = false;
+}
+
+function einlesen() {
+  if (laeuft) return;
+  laeuft = true;
+
+  var blatt = document.getElementById("blatt");
+  var linie = document.getElementById("scanlinie");
+  var reihen = Array.prototype.slice.call(document.querySelectorAll("#blatt-koerper tr"));
+
+  blatt.classList.add("laeuft");
+  document.getElementById("einlesen").disabled = true;
+
+  var proReihe = 55;
+  reihen.forEach(function (tr, i) {
+    zeitgeber.push(setTimeout(function () {
+      tr.classList.add("erkannt");
+      var kasten = tr.getBoundingClientRect();
+      var bezug = blatt.getBoundingClientRect();
+      linie.style.top = (kasten.bottom - bezug.top) + "px";
+    }, i * proReihe));
+  });
+
+  zeitgeber.push(setTimeout(function () {
+    blatt.classList.remove("laeuft");
+    ergebnisZeigen();
+    laeuft = false;
+    document.getElementById("a-erkannt").scrollIntoView({ behavior: "smooth", block: "start" });
+  }, reihen.length * proReihe + 350));
+}
+
+function zuruecksetzen() {
+  abbrechen();
+  document.getElementById("blatt").classList.remove("laeuft");
+  document.getElementById("scanlinie").style.top = "0px";
+  Array.prototype.forEach.call(document.querySelectorAll("#blatt-koerper tr"), function (tr) {
+    tr.classList.remove("erkannt");
+  });
+  ["a-erkannt", "a-pruefung", "a-baustellen", "a-ausgabe"].forEach(function (id) {
+    document.getElementById(id).classList.add("verborgen");
+  });
+  document.getElementById("lohnbereich").classList.add("verborgen");
+  document.getElementById("einlesen").disabled = false;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ------------------------------------------------------------------ *
+ * Ergebnisdarstellung
+ * ------------------------------------------------------------------ */
+
+function ergebnisZeigen() {
+  tabelleErkannt();
+  befundeZeigen();
+  tabelleBaustellen();
+  kennzahlenZeigen();
+  lohndateiFuellen();
+  ["a-erkannt", "a-pruefung", "a-baustellen", "a-ausgabe"].forEach(function (id) {
+    document.getElementById(id).classList.remove("verborgen");
+  });
+}
+
+function tabelleErkannt() {
+  var satz = E.zeilen.length + " Tage gelesen, " + stundenText(E.summeAngerechnet) +
+    " anrechenbare Arbeitszeit. Pausen sind abgezogen.";
+  document.getElementById("erkannt-satz").textContent = satz;
+
+  var h = document.getElementById("erkannt-hinweis");
+  if (E.unsichereFelder > 0) {
+    h.innerHTML = "<p><strong>" + E.unsichereFelder + " Felder sind unsicher gelesen</strong> " +
+      "und unten gestrichelt markiert. Sie werden zur Bestätigung vorgelegt, nicht " +
+      "stillschweigend übernommen — genau das ist der Unterschied zu einer Automatik, " +
+      "die man nicht kontrollieren kann.</p>";
+  } else {
+    h.classList.add("verborgen");
+  }
+
+  var kopf =
+    "<thead><tr>" +
+    "<th>Tag</th><th>Baustelle</th><th>Arbeit</th>" +
+    '<th class="r">von</th><th class="r">bis</th>' +
+    '<th class="r">Pause</th><th class="r">Arbeitszeit</th><th></th>' +
+    "</tr></thead>";
+
+  var nachTag = {};
+  E.zeilen.forEach(function (z) { nachTag[z.tag] = z; });
+
+  var koerper = "";
+  for (var t = 1; t <= tageImMonat(); t++) {
+    if (!istWerktag(t)) continue;
+    var z = nachTag[t];
+    if (!z) {
+      koerper +=
+        '<tr class="fehlt"><td class="zahl">' + t + ". " + wochentag(t) + "</td>" +
+        '<td colspan="7">kein Eintrag</td></tr>';
+      continue;
+    }
+    var pause = Math.max(z.erfasstePause, z.pflichtpause);
+    var pauseZelle = minutenText(pause);
+    if (z.fehlendePause > 0) {
+      pauseZelle = minutenText(z.erfasstePause) + " → " + minutenText(pause);
+    }
+    var marken = "";
+    if (z.unsicher.length > 0) marken += '<span class="marke">prüfen</span> ';
+    if (z.fehlendePause > 0 || z.angerechnet > 10 * 60) marken += '<span class="marke voll">Hinweis</span>';
+
+    var vonZelle = z.unsicher.indexOf("von") >= 0 ? '<span class="unsicher">' + z.von + "</span>" : z.von;
+    var bisZelle = z.unsicher.indexOf("bis") >= 0 ? '<span class="unsicher">' + z.bis + "</span>" : z.bis;
+    var ortZelle = z.unsicher.indexOf("ort") >= 0 ? '<span class="unsicher">' + z.baustelle + "</span>" : z.baustelle;
+    if (z.unsicher.indexOf("brotzeit") >= 0) pauseZelle = '<span class="unsicher">' + pauseZelle + "</span>";
+
+    koerper +=
+      "<tr>" +
+      '<td class="zahl">' + z.tag + ". " + z.wochentag + "</td>" +
+      "<td>" + ortZelle + "</td>" +
+      "<td>" + z.arbeit + "</td>" +
+      '<td class="r zahl">' + vonZelle + "</td>" +
+      '<td class="r zahl">' + bisZelle + "</td>" +
+      '<td class="r zahl">' + pauseZelle + "</td>" +
+      '<td class="r zahl">' + stundenText(z.angerechnet) + "</td>" +
+      "<td>" + marken + "</td>" +
+      "</tr>";
+  }
+
+  koerper +=
+    '<tr class="summe"><td colspan="6">Summe</td>' +
+    '<td class="r zahl">' + stundenText(E.summeAngerechnet) + "</td><td></td></tr>";
+
+  document.getElementById("tab-erkannt").innerHTML = kopf + "<tbody>" + koerper + "</tbody>";
+}
+
+function befundeZeigen() {
+  var ziel = document.getElementById("befunde");
+  var html = "";
+
+  if (E.zeilenMitUnsicher.length > 0) {
+    var tage = E.zeilenMitUnsicher.map(function (z) { return z.tag + "."; }).join(", ");
+    html +=
+      '<div class="befund"><h3>' + E.unsichereFelder + " Felder zur Bestätigung</h3>" +
+      "<p>Betroffen: " + tage + " — die Software liest hier nicht sicher und fragt nach, " +
+      "statt zu raten.</p></div>";
+  }
+
+  if (E.luecken.length > 0) {
+    var l = E.luecken.map(function (t) { return t + ". " + wochentag(t); }).join(", ");
+    html +=
+      '<div class="befund"><h3>' +
+      mehrzahl(E.luecken.length, "Werktag", "Werktage") + " ohne Eintrag</h3>" +
+      "<p>" + l + " — Urlaub, krank, oder vergessen einzutragen? Das muss geklärt sein, " +
+      "bevor der Lohn läuft.</p></div>";
+  }
+
+  E.pausenverstoesse.forEach(function (z) {
+    html +=
+      '<div class="befund"><h3>' + z.tag + ". " + z.wochentag + ": Pause zu kurz eingetragen</h3>" +
+      "<p>Eingetragen sind " + minutenText(z.erfasstePause) + " bei " +
+      stundenText(z.brutto) + " Anwesenheit. Vorgeschrieben sind " +
+      minutenText(z.pflichtpause) + ". Für die Abrechnung wird die gesetzliche Pause " +
+      "abgezogen; nachfragen sollte man trotzdem.</p>" +
+      '<p class="paragraf">§ 4 Arbeitszeitgesetz: mehr als sechs bis zu neun Stunden ' +
+      "Arbeitszeit → 30 Minuten, mehr als neun Stunden → 45 Minuten.</p></div>";
+  });
+
+  E.ueberlange.forEach(function (z) {
+    html +=
+      '<div class="befund"><h3>' + z.tag + ". " + z.wochentag + ": über zehn Stunden Arbeitszeit</h3>" +
+      "<p>" + stundenText(z.angerechnet) + " nach Abzug der Pause. Zehn Stunden sind die " +
+      "absolute Obergrenze — auch mit Ausgleich.</p>" +
+      '<p class="paragraf">§ 3 Arbeitszeitgesetz: werktäglich acht Stunden, Verlängerung auf ' +
+      "höchstens zehn Stunden nur, wenn im Durchschnitt von sechs Kalendermonaten oder " +
+      "24 Wochen acht Stunden nicht überschritten werden.</p></div>";
+  });
+
+  if (html === "") {
+    html = '<div class="befund"><h3>Nichts zu beanstanden</h3><p>Alle Zeilen vollständig, ' +
+      "Pausen eingehalten, keine Überschreitung.</p></div>";
+  }
+
+  ziel.innerHTML = html;
+}
+
+function tabelleBaustellen() {
+  var kopf = '<thead><tr><th>Baustelle</th><th class="r">Tage</th><th class="r">Stunden</th></tr></thead>';
+  var koerper = "";
+  E.baustellen.forEach(function (b) {
+    koerper +=
+      "<tr><td>" + b.name + "</td>" +
+      '<td class="r zahl">' + b.tage + "</td>" +
+      '<td class="r zahl">' + stundenText(b.minuten) + "</td></tr>";
+  });
+  var tage = E.zeilen.length;
+  koerper +=
+    '<tr class="summe"><td>Summe</td><td class="r zahl">' + tage + "</td>" +
+    '<td class="r zahl">' + stundenText(E.summeAngerechnet) + "</td></tr>";
+  document.getElementById("tab-baustellen").innerHTML = kopf + "<tbody>" + koerper + "</tbody>";
+}
+
+function kennzahlenZeigen() {
+  var felder = [
+    { b: "Arbeitszeit im Monat", w: stundenText(E.summeAngerechnet) },
+    { b: "Erfasste Tage", w: String(E.zeilen.length) },
+    { b: "Baustellen", w: String(E.baustellen.length) },
+    { b: "Zu klären", w: String(E.unsichereFelder + E.luecken.length + E.pausenverstoesse.length + E.ueberlange.length) }
+  ];
+  document.getElementById("kennzahlen").innerHTML = felder.map(function (f) {
+    return '<div><div class="beschriftung">' + f.b + '</div><div class="wert">' + f.w + "</div></div>";
+  }).join("");
+}
+
+function lohndateiFuellen() {
+  var zeilen = ["Datum;Mitarbeiter;Baustelle;Von;Bis;Pause_Min;Stunden"];
+  E.zeilen.forEach(function (z) {
+    var datum = String(z.tag).padStart(2, "0") + "." +
+      String(MONAT.monat).padStart(2, "0") + "." + MONAT.jahr;
+    zeilen.push([
+      datum,
+      MITARBEITER,
+      z.baustelle,
+      z.von,
+      z.bis,
+      Math.max(z.erfasstePause, z.pflichtpause),
+      zahlText(z.angerechnet / 60, 2)
+    ].join(";"));
+  });
+  document.getElementById("lohn-datei").textContent = zeilen.join("\n");
+}
+
+/* ------------------------------------------------------------------ *
+ * Druckausgaben
+ * ------------------------------------------------------------------ */
+
+function heuteText() {
+  var d = new Date();
+  return String(d.getDate()).padStart(2, "0") + "." +
+    String(d.getMonth() + 1).padStart(2, "0") + "." + d.getFullYear();
+}
+
+function mehrzahl(anzahl, einzahl, mehrere) {
+  return anzahl + " " + (anzahl === 1 ? einzahl : mehrere);
+}
+
+function druckKopf(titel) {
+  return "<h1>" + titel + "</h1>" +
+    '<div class="kopfzeile">' + MITARBEITER + " · " + MONAT.name +
+    " · erstellt am " + heuteText() + "</div>";
+}
+
+function druckeMonat() {
+  var reihen = "";
+  var nachTag = {};
+  E.zeilen.forEach(function (z) { nachTag[z.tag] = z; });
+  for (var t = 1; t <= tageImMonat(); t++) {
+    if (!istWerktag(t)) continue;
+    var z = nachTag[t];
+    if (!z) {
+      reihen += "<tr><td>" + t + ". " + wochentag(t) + '</td><td colspan="5">kein Eintrag</td></tr>';
+      continue;
+    }
+    reihen +=
+      "<tr><td>" + z.tag + ". " + z.wochentag + "</td>" +
+      "<td>" + z.baustelle + "</td>" +
+      "<td>" + z.arbeit + "</td>" +
+      '<td class="r">' + z.von + "–" + z.bis + "</td>" +
+      '<td class="r">' + minutenText(Math.max(z.erfasstePause, z.pflichtpause)) + "</td>" +
+      '<td class="r">' + stundenText(z.angerechnet) + "</td></tr>";
+  }
+  reihen += '<tr class="summe"><td colspan="5">Summe</td><td class="r">' +
+    stundenText(E.summeAngerechnet) + "</td></tr>";
+
+  var hinweise = "";
+  if (E.pausenverstoesse.length > 0 || E.ueberlange.length > 0 || E.luecken.length > 0) {
+    hinweise = '<div class="fussnote"><strong>Hinweise:</strong> ';
+    var teile = [];
+    if (E.luecken.length > 0) {
+      teile.push(mehrzahl(E.luecken.length, "Werktag", "Werktage") + " ohne Eintrag (" +
+        E.luecken.map(function (t) { return t + "."; }).join(", ") + ")");
+    }
+    if (E.pausenverstoesse.length > 0) {
+      teile.push("an " + mehrzahl(E.pausenverstoesse.length, "Tag", "Tagen") +
+        " war die eingetragene Pause kürzer als die gesetzliche Mindestpause (§ 4 ArbZG); " +
+        "angerechnet ist die gesetzliche Pause");
+    }
+    if (E.ueberlange.length > 0) {
+      teile.push("an " + mehrzahl(E.ueberlange.length, "Tag", "Tagen") +
+        " über zehn Stunden Arbeitszeit (§ 3 ArbZG)");
+    }
+    hinweise += teile.join("; ") + ".</div>";
+  }
+
+  document.getElementById("druckbereich").innerHTML =
+    druckKopf("Stundennachweis " + MONAT.name) +
+    "<table><thead><tr><th>Tag</th><th>Baustelle</th><th>Arbeit</th>" +
+    '<th class="r">Zeit</th><th class="r">Pause</th><th class="r">Stunden</th></tr></thead>' +
+    "<tbody>" + reihen + "</tbody></table>" + hinweise;
+  window.print();
+}
+
+function druckeBaustellen() {
+  var reihen = "";
+  E.baustellen.forEach(function (b) {
+    reihen += "<tr><td>" + b.name + '</td><td class="r">' + b.tage +
+      '</td><td class="r">' + stundenText(b.minuten) + "</td></tr>";
+  });
+  reihen += '<tr class="summe"><td>Summe</td><td class="r">' + E.zeilen.length +
+    '</td><td class="r">' + stundenText(E.summeAngerechnet) + "</td></tr>";
+
+  document.getElementById("druckbereich").innerHTML =
+    druckKopf("Stunden je Baustelle — " + MONAT.name) +
+    '<table><thead><tr><th>Baustelle</th><th class="r">Tage</th>' +
+    '<th class="r">Stunden</th></tr></thead><tbody>' + reihen + "</tbody></table>" +
+    '<div class="fussnote">Pausen sind abgezogen. Grundlage: Stundennachweis ' +
+    MITARBEITER + ", " + MONAT.name + ".</div>";
+  window.print();
+}
+
+/* ------------------------------------------------------------------ *
+ * Verdrahtung
+ * ------------------------------------------------------------------ */
+
+blattZeichnen();
+
+document.getElementById("einlesen").addEventListener("click", einlesen);
+document.getElementById("zuruecksetzen").addEventListener("click", zuruecksetzen);
+document.getElementById("druck-monat").addEventListener("click", druckeMonat);
+document.getElementById("druck-baustellen").addEventListener("click", druckeBaustellen);
+
+document.getElementById("zeige-lohn").addEventListener("click", function () {
+  document.getElementById("lohnbereich").classList.toggle("verborgen");
+});
+
+document.getElementById("lohn-kopieren").addEventListener("click", function () {
+  var text = document.getElementById("lohn-datei").textContent;
+  var knopf = this;
+  function rueckmeldung(ok) {
+    knopf.textContent = ok ? "Kopiert" : "Bitte von Hand markieren";
+    setTimeout(function () { knopf.textContent = "Inhalt kopieren"; }, 2000);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () { rueckmeldung(true); },
+      function () { rueckmeldung(false); });
+  } else {
+    rueckmeldung(false);
+  }
+});
+</script>
+</body>
+</html>
