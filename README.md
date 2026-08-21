@@ -88,6 +88,7 @@ vom iPad zum Rechner.
 | `src/components/` | Oberfläche: Betriebsleiste, Messen, Auswerten, Stoppuhr |
 | `src/lib/zahlen.ts` | Zahleneingaben einlesen (Punkt/Komma, Tausendertrennung) |
 | `scripts/smoke.mjs` | Funktionsprüfung im echten Browser (39 Prüfungen) |
+| `demo/stundenzettel.html` | Vorführseite fürs Verkaufsgespräch (eigenständig) |
 
 ## Prüfen
 
@@ -97,6 +98,22 @@ npm run test:run          # 98 Tests der Rechenlogik und des PDF
 npm run preview           # und in einem zweiten Fenster:
 npm run test:browser      # kompletter Ablauf im Browser bis zum PDF (39 Prüfungen)
 ```
+
+## Demo fürs Verkaufsgespräch
+
+`demo/stundenzettel.html` — eine eigenständige Seite, Doppelklick genügt, kein
+Terminal und kein Internet nötig. Sie zeigt an einem erfundenen Beispielzettel,
+wie aus einem handschriftlichen Monats-Stundenzettel strukturierte Daten,
+Stunden je Baustelle und ein PDF werden — und was dabei auffällt (fehlender
+Tag, zu kurze Pause, über zehn Stunden).
+
+Die Seite nennt bewusst **keine Ersparniszahl** und verspricht **keine
+fehlerfreie Handschrifterkennung**; unsicher gelesene Felder sind als solche
+markiert. Ein ausklappbarer Anhang nennt die Aufzeichnungspflichten für
+Baubetriebe und stellt ausdrücklich klar, dass Papier weiterhin zulässig ist.
+
+Vorbereitung dazu: **demo/GESPRAECH.md** — was belegt ist, was du daraus sagen
+kannst und welche Sätze dich angreifbar machen.
 
 ## Weitere Unterlagen
 

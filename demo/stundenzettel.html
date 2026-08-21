@@ -311,6 +311,67 @@
   </div>
 </section>
 
+<!-- 6 ---------------------------------------------------------------- -->
+<section class="abschnitt">
+  <div class="kopf">
+    <span class="nr">Anhang</span><h2>Rechtlicher Rahmen</h2>
+    <button class="knopf zweit" id="recht-schalter" style="margin-left:auto">Aufklappen</button>
+  </div>
+  <div class="rumpf verborgen" id="recht-rumpf">
+
+    <div class="hinweis wichtig">
+      <p><strong>Papier ist erlaubt.</strong> Es gibt keine Pflicht, die Arbeitszeit
+        elektronisch zu erfassen. Ein Gesetz dazu ist über einen Referentenentwurf
+        (Juni&nbsp;2026) nicht hinausgekommen. Wer etwas anderes behauptet, verwechselt
+        Entwurf mit geltendem Recht.</p>
+      <p>Der Grund für eine Umstellung ist also nicht der Gesetzgeber, sondern die
+        Zeit, die das Abtippen kostet — und die wird gemessen, nicht behauptet.</p>
+    </div>
+
+    <h3 style="font-size:16px;margin:18px 0 6px">Aufzuzeichnen ist ohnehin</h3>
+    <p style="margin-top:0">Das Baugewerbe steht an erster Stelle des Branchenkatalogs
+      (§&nbsp;2a Abs.&nbsp;1 Nr.&nbsp;1 Schwarzarbeitsbekämpfungsgesetz). Damit gilt
+      §&nbsp;17 Abs.&nbsp;1 Mindestlohngesetz: <strong>Beginn, Ende und Dauer</strong>
+      der täglichen Arbeitszeit sind aufzuzeichnen — bis zum Ablauf des siebten auf den
+      Tag der Arbeitsleistung folgenden Kalendertages — und <strong>mindestens zwei
+      Jahre</strong> aufzubewahren. Eine Ausnahme für kleine Betriebe gibt es nicht;
+      §&nbsp;17 MiLoG kennt keine Betriebsgrößenschwelle. Geprüft wird vom Zoll
+      (§&nbsp;14 MiLoG).</p>
+    <p>Eine bloße Stundensumme genügt dem Wortlaut nicht — verlangt sind drei Angaben.
+      Genau die stehen auf dem Zettel oben bereits; es geht also nicht darum, mehr zu
+      erfassen, sondern das Erfasste nicht zweimal anzufassen.</p>
+
+    <h3 style="font-size:16px;margin:18px 0 6px">Auf der Baustelle bereitzuhalten</h3>
+    <p style="margin-top:0">Bei Bauleistungen sind die Unterlagen <em>auf der Baustelle</em>
+      bereitzuhalten (§&nbsp;19 Abs.&nbsp;2 Satz&nbsp;2 Arbeitnehmer-Entsendegesetz).
+      Das ist der Punkt, an dem ein Ordner im Büro nicht hilft.</p>
+
+    <h3 style="font-size:16px;margin:18px 0 6px">Pausen und Höchstarbeitszeit</h3>
+    <p style="margin-top:0">§&nbsp;4 Arbeitszeitgesetz: mindestens 30&nbsp;Minuten
+      Ruhepause bei einer Arbeitszeit von mehr als sechs bis zu neun Stunden,
+      45&nbsp;Minuten bei mehr als neun Stunden; aufteilbar in Abschnitte von je
+      mindestens 15&nbsp;Minuten; länger als sechs Stunden hintereinander nicht ohne
+      Pause. Ruhepausen zählen nicht zur Arbeitszeit (§&nbsp;2 Abs.&nbsp;1 ArbZG).</p>
+    <p>§&nbsp;3 Arbeitszeitgesetz: werktäglich höchstens acht Stunden, verlängerbar auf
+      bis zu zehn Stunden, wenn innerhalb von sechs Kalendermonaten oder 24&nbsp;Wochen
+      im Durchschnitt acht Stunden nicht überschritten werden.</p>
+
+    <h3 style="font-size:16px;margin:18px 0 6px">Zettel wegwerfen nach dem Einscannen?</h3>
+    <p style="margin-top:0">Papierbelege dürfen nach ordnungsgemäßer bildlicher Erfassung
+      grundsätzlich vernichtet werden, soweit sie nicht im Original aufzubewahren sind.
+      Voraussetzung ist eine <strong>Verfahrensdokumentation</strong>. Das ist vorab mit
+      dem Steuerberater zu klären — nicht nebenbei zu entscheiden.</p>
+
+    <div class="hinweis" style="margin-top:18px">
+      <p><strong>Stand August&nbsp;2026.</strong> Zusammenstellung nach bestem Wissen,
+        keine Rechtsberatung und ohne Gewähr. Bußgeldhöhen sind hier bewusst nicht
+        genannt: Sie wurden zuletzt geändert, und eine Zahl, die nicht stimmt, ist
+        schlimmer als keine.</p>
+    </div>
+
+  </div>
+</section>
+
 <footer>
   <p><strong>Ehrlich bleiben im Gespräch:</strong> Handschrift wird nicht fehlerfrei
     gelesen. Ein System, das etwas anderes verspricht, ist unseriös. Deshalb markiert
@@ -692,14 +753,15 @@ function befundeZeigen() {
       minutenText(z.pflichtpause) + ". Für die Abrechnung wird die gesetzliche Pause " +
       "abgezogen; nachfragen sollte man trotzdem.</p>" +
       '<p class="paragraf">§ 4 Arbeitszeitgesetz: mehr als sechs bis zu neun Stunden ' +
-      "Arbeitszeit → 30 Minuten, mehr als neun Stunden → 45 Minuten.</p></div>";
+      "Arbeitszeit 30 Minuten, mehr als neun Stunden 45 Minuten. Aufteilbar in " +
+      "Abschnitte von je mindestens 15 Minuten.</p></div>";
   });
 
   E.ueberlange.forEach(function (z) {
     html +=
       '<div class="befund"><h3>' + z.tag + ". " + z.wochentag + ": über zehn Stunden Arbeitszeit</h3>" +
-      "<p>" + stundenText(z.angerechnet) + " nach Abzug der Pause. Zehn Stunden sind die " +
-      "absolute Obergrenze — auch mit Ausgleich.</p>" +
+      "<p>" + stundenText(z.angerechnet) + " nach Abzug der Pause. Mehr als zehn Stunden " +
+      "lässt das Gesetz werktäglich im Regelfall nicht zu.</p>" +
       '<p class="paragraf">§ 3 Arbeitszeitgesetz: werktäglich acht Stunden, Verlängerung auf ' +
       "höchstens zehn Stunden nur, wenn im Durchschnitt von sechs Kalendermonaten oder " +
       "24 Wochen acht Stunden nicht überschritten werden.</p></div>";
@@ -857,6 +919,12 @@ document.getElementById("einlesen").addEventListener("click", einlesen);
 document.getElementById("zuruecksetzen").addEventListener("click", zuruecksetzen);
 document.getElementById("druck-monat").addEventListener("click", druckeMonat);
 document.getElementById("druck-baustellen").addEventListener("click", druckeBaustellen);
+
+document.getElementById("recht-schalter").addEventListener("click", function () {
+  var rumpf = document.getElementById("recht-rumpf");
+  var offen = rumpf.classList.toggle("verborgen") === false;
+  this.textContent = offen ? "Zuklappen" : "Aufklappen";
+});
 
 document.getElementById("zeige-lohn").addEventListener("click", function () {
   document.getElementById("lohnbereich").classList.toggle("verborgen");
